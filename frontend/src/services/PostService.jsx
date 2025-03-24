@@ -18,6 +18,9 @@ const PostService = {
 
   // Get a specific post
   getPostById: (postId) => {
+    if (!postId || postId === 'undefined') {
+      return Promise.reject(new Error("Invalid post ID"));
+    }
     return api.get(`/posts/${postId}`);
   },
 

@@ -1,5 +1,4 @@
-import React from 'react'
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import PostService from "../services/postService";
@@ -15,28 +14,34 @@ function PostDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Add safety check - redirect if no ID
-    if (!postId) {
-      navigate('/posts');
+    // If no postId is provided, redirect to posts listing
+    if (!postId || postId === 'undefined') {
+      console.error("Invalid post ID:", postId);
+      navigate('/posts'); // Redirect to posts list instead of showing an error
       return;
     }
     
     fetchPost();
-  }, [postId, navigate]);
+  }, [postId, navigate]); // Include navigate in dependencies
 
   const fetchPost = async () => {
+    if (!postId || postId === 'undefined') return;
+    
     try {
       setLoading(true);
-      // Only make the API call if postId is defined
-      if (postId) {
-        const response = await PostService.getPostById(postId);
-        setPost(response.data);
+      const response = await PostService.getPostById(postId);
+      
+      // Check if the response data is valid
+      if (!response.data) {
+        throw new Error("Post not found");
       }
+      
+      setPost(response.data);
       setLoading(false);
     } catch (err) {
-      setError("Failed to load post");
+      console.error("Error fetching post:", err);
+      setError("Failed to load post: " + (err.response?.status === 404 ? "Post not found" : err.message));
       setLoading(false);
-      console.error(err);
     }
   };
 
@@ -230,6 +235,9 @@ function PostDetailPage() {
               >
                 <i className="bi bi-chat-fill me-1"></i>
                 {post.comments.length} {post.comments.length === 1 ? "Comment" : "Comments"}
+              </button>
+              <button className="btn btn-sm btn-link" onClick={() => window.scrollTo(0, 0)}>
+                Back to Top
               </button>
             </div>
             
