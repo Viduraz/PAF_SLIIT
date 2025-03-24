@@ -15,14 +15,23 @@ function PostDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    // Add safety check - redirect if no ID
+    if (!postId) {
+      navigate('/posts');
+      return;
+    }
+    
     fetchPost();
-  }, [postId]);
+  }, [postId, navigate]);
 
   const fetchPost = async () => {
     try {
       setLoading(true);
-      const response = await PostService.getPostById(postId);
-      setPost(response.data);
+      // Only make the API call if postId is defined
+      if (postId) {
+        const response = await PostService.getPostById(postId);
+        setPost(response.data);
+      }
       setLoading(false);
     } catch (err) {
       setError("Failed to load post");

@@ -54,6 +54,15 @@ const PlantProgressService = {
   // Get recent progress for a user
   getRecentProgress: (userId) => {
     return api.get(`/api/progress/users/${userId}/recent`);
+  },
+
+  // Start progress for a plan
+  startProgress: (planId) => {
+    return api.post("/api/progress", {
+      plantingPlan: planId,
+      progressPercentage: 0,
+      completedMilestones: []
+    });
   }
 };
 
