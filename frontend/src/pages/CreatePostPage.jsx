@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import PostService from "../services/postService";
@@ -15,10 +15,16 @@ function CreatePostPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Redirect if not logged in
+  // Move navigation to useEffect
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/login");
+    }
+  }, [isAuthenticated, navigate]);
+
+  // If not authenticated, don't render the form
   if (!isAuthenticated) {
-    navigate("/login");
-    return null;
+    return null; // Return null during initial render, useEffect will handle redirect
   }
 
   const handleChange = (e) => {
