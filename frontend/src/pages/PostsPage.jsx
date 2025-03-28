@@ -78,13 +78,15 @@ function PostsPage() {
       // Update the post in the state
       setPosts(posts.map(post => {
         if (post._id === postId) {
+          // Make sure post.likes is an array
+          const currentLikes = Array.isArray(post.likes) ? post.likes : [];
           // Toggle like
-          const alreadyLiked = post.likes.includes(currentUser._id);
+          const alreadyLiked = currentLikes.includes(currentUser._id);
           return {
             ...post,
             likes: alreadyLiked 
-              ? post.likes.filter(id => id !== currentUser._id)
-              : [...post.likes, currentUser._id]
+              ? currentLikes.filter(id => id !== currentUser._id)
+              : [...currentLikes, currentUser._id]
           };
         }
         return post;
@@ -232,13 +234,13 @@ function PostsPage() {
                   <div className="d-flex justify-content-between align-items-center">
                     <div>
                       <button 
-                        className={`btn btn-sm ${isAuthenticated && post.likes && post.likes.includes(currentUser?._id) 
+                        className={`btn btn-sm ${isAuthenticated && post.likes && Array.isArray(post.likes) && post.likes.includes(currentUser?._id) 
                           ? "btn-danger" 
                           : "btn-outline-danger"}`}
                         onClick={() => likePost(post._id)}
                       >
                         <i className="bi bi-heart-fill me-1"></i>
-                        {post.likes ? post.likes.length : 0}
+                        {Array.isArray(post.likes) ? post.likes.length : 0}
                       </button>
                       
                       <Link to={`/posts/${post._id}`} className="btn btn-sm btn-outline-primary ms-2">
