@@ -7,7 +7,7 @@ import PlantProgressService from "../services/plantProgressService";
 
 function ProfilePage() {
   const { username } = useParams();
-  const { currentUser } = useAuth();
+  const { currentUser, isAuthenticated } = useAuth();
   const [profile, setProfile] = useState(null);
   const [plantProgress, setPlantProgress] = useState([]);
   const [posts, setPosts] = useState([]);
@@ -19,7 +19,16 @@ function ProfilePage() {
     const fetchProfileData = async () => {
       try {
         setLoading(true);
-        const userId = username || (currentUser ? currentUser._id : null);
+        
+        let userId;
+        if (username) {
+          // Fetch user by username
+          const userResponse = await UserService.getUserByUsername(username);
+          userId = userResponse.data._id;
+        } else if (isAuthenticated && currentUser) {
+          // Fix: Check for both _id and id properties in currentUser
+          userId = currentUser._id || currentUser.id;
+        }
         
         if (!userId) {
           setError("User not found");
@@ -35,24 +44,32 @@ function ProfilePage() {
         const progressResponse = await PlantProgressService.getUserProgress(userId);
         setPlantProgress(progressResponse.data);
 
-        // Fetch user's posts
-        // Assuming you have a PostService with getUserPosts method
-        // const postsResponse = await PostService.getUserPosts(userId);
-        // setPosts(postsResponse.data);
-        
-        // Placeholder for posts until you implement the PostService
-        setPosts([]);
+        // Fetch user's posts if the method exists
+        try {
+          if (typeof UserService.getUserPosts === 'function') {
+            const postsResponse = await UserService.getUserPosts(userId);
+            setPosts(postsResponse.data);
+          }
+        } catch (postErr) {
+          console.warn("Could not load posts:", postErr);
+          // Continue without posts rather than failing completely
+        }
 
         setLoading(false);
       } catch (err) {
-        setError("Error loading profile data");
+        console.error("Profile loading error:", err);
+        setError(err.response?.data?.message || "Error loading profile data");
         setLoading(false);
-        console.error(err);
       }
     };
 
-    fetchProfileData();
-  }, [username, currentUser]);
+    if (isAuthenticated || username) {
+      fetchProfileData();
+    } else {
+      setError("Please log in to view your profile");
+      setLoading(false);
+    }
+  }, [username, currentUser, isAuthenticated]);
 
   const isOwnProfile = !username || (currentUser && profile && currentUser._id === profile._id);
 
@@ -106,7 +123,6 @@ function ProfilePage() {
               ) : (
                 <button 
                   className="btn btn-primary w-100"
-                  // Implement follow/unfollow functionality
                 >
                   {profile.followers?.includes(currentUser?._id) ? "Unfollow" : "Follow"}
                 </button>
