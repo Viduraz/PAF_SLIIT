@@ -99,10 +99,12 @@ function Navbar() {
                       />
                     ) : (
                       <div className="rounded-full bg-white text-green-600 flex items-center justify-center mr-2 h-6 w-6 text-xs font-bold">
-                        {currentUser.username.charAt(0).toUpperCase()}
+                        {currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 
+                         currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 
+                         currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : '?'}
                       </div>
                     )}
-                    {currentUser.username}
+                    {currentUser?.username || currentUser?.name || currentUser?.email || 'User'}
                     <svg className="ml-1 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>

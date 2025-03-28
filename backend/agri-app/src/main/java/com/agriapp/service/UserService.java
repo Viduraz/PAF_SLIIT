@@ -19,4 +19,5 @@ public interface UserService {
     void unfollowUser(String userId, String unfollowedUserId);
     String generateToken(User createdUser);
     boolean validatePassword(String password, String password2);
+    User getUserFromToken(String token);
 }
