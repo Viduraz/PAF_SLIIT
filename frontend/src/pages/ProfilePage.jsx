@@ -4,23 +4,50 @@ import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import UserService from "../services/userService";
 import PlantProgressService from "../services/plantProgressService";
+import PostService from "../services/postService"; // Import PostService
 
 function ProfilePage() {
   const { username } = useParams();
-  const { currentUser } = useAuth();
+  const { currentUser, isAuthenticated } = useAuth();
   const [profile, setProfile] = useState(null);
   const [plantProgress, setPlantProgress] = useState([]);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("progress");
+  const [isOwnProfile, setIsOwnProfile] = useState(false); // Add this to determine if the user is viewing their own profile
 
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
         setLoading(true);
-        const userId = username || (currentUser ? currentUser._id : null);
-        
+
+        let userId;
+        let checkOwnProfile = false;
+
+        if (username) {
+          // Fetch user by username
+          try {
+            const userResponse = await UserService.getUserByUsername(username);
+            userId = userResponse.data._id || userResponse.data.id;
+            // Check if this is the current user's profile
+            checkOwnProfile = isAuthenticated && currentUser &&
+              (currentUser._id === userId || currentUser.id === userId);
+          } catch (err) {
+            console.error("Error fetching user by username:", err);
+            setError("User not found");
+            setLoading(false);
+            return;
+          }
+        } else if (isAuthenticated && currentUser) {
+          // This is the current user's profile
+          userId = currentUser._id || currentUser.id;
+          checkOwnProfile = true;
+        }
+
+        // Set the isOwnProfile state
+        setIsOwnProfile(checkOwnProfile);
+
         if (!userId) {
           setError("User not found");
           setLoading(false);
@@ -32,29 +59,40 @@ function ProfilePage() {
         setProfile(profileResponse.data);
 
         // Fetch user's plant progress
-        const progressResponse = await PlantProgressService.getUserProgress(userId);
-        setPlantProgress(progressResponse.data);
+        try {
+          const progressResponse = await PlantProgressService.getUserProgress(userId);
+          setPlantProgress(progressResponse.data);
+        } catch (progressErr) {
+          console.warn("Could not load plant progress:", progressErr);
+          // Continue without progress rather than failing completely
+        }
 
-        // Fetch user's posts
-        // Assuming you have a PostService with getUserPosts method
-        // const postsResponse = await PostService.getUserPosts(userId);
-        // setPosts(postsResponse.data);
-        
-        // Placeholder for posts until you implement the PostService
-        setPosts([]);
+        // Fetch user's posts using PostService instead of UserService
+        try {
+          // Use PostService's getUserPosts method instead
+          const postsResponse = await PostService.getUserPosts(userId);
+          setPosts(postsResponse.data);
+        } catch (postErr) {
+          console.warn("Could not load posts:", postErr);
+          // Continue without posts rather than failing completely
+          setPosts([]);
+        }
 
         setLoading(false);
       } catch (err) {
-        setError("Error loading profile data");
+        console.error("Profile loading error:", err);
+        setError(err.response?.data?.message || "Error loading profile data");
         setLoading(false);
-        console.error(err);
       }
     };
 
-    fetchProfileData();
-  }, [username, currentUser]);
-
-  const isOwnProfile = !username || (currentUser && profile && currentUser._id === profile._id);
+    if (isAuthenticated || username) {
+      fetchProfileData();
+    } else {
+      setError("Please log in to view your profile");
+      setLoading(false);
+    }
+  }, [username, currentUser, isAuthenticated]);
 
   if (loading) return <div className="text-center mt-5"><div className="spinner-border"></div></div>;
   if (error) return <div className="alert alert-danger mt-3">{error}</div>;
@@ -106,7 +144,6 @@ function ProfilePage() {
               ) : (
                 <button 
                   className="btn btn-primary w-100"
-                  // Implement follow/unfollow functionality
                 >
                   {profile.followers?.includes(currentUser?._id) ? "Unfollow" : "Follow"}
                 </button>
@@ -201,7 +238,15 @@ function ProfilePage() {
               
               {activeTab === "posts" && (
                 <div>
-                  <h4>Posts</h4>
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h4>Posts</h4>
+                    {isOwnProfile && (
+                      <Link to="/posts/new" className="btn btn-success">
+                        <i className="bi bi-plus-circle me-1"></i> Create New Post
+                      </Link>
+                    )}
+                  </div>
+                  
                   {posts.length > 0 ? (
                     <div className="row">
                       {posts.map((post) => (

@@ -78,13 +78,15 @@ function PostsPage() {
       // Update the post in the state
       setPosts(posts.map(post => {
         if (post._id === postId) {
+          // Make sure post.likes is an array
+          const currentLikes = Array.isArray(post.likes) ? post.likes : [];
           // Toggle like
-          const alreadyLiked = post.likes.includes(currentUser._id);
+          const alreadyLiked = currentLikes.includes(currentUser._id);
           return {
             ...post,
             likes: alreadyLiked 
-              ? post.likes.filter(id => id !== currentUser._id)
-              : [...post.likes, currentUser._id]
+              ? currentLikes.filter(id => id !== currentUser._id)
+              : [...currentLikes, currentUser._id]
           };
         }
         return post;
@@ -160,8 +162,8 @@ function PostsPage() {
 
       {posts.length > 0 ? (
         <div className="row">
-          {posts.map(post => (
-            <div className="col-md-6 mb-4" key={post._id}>
+          {posts.map((post, index) => (
+            <div className="col-md-6 mb-4" key={post._id || `post-${index}`}>
               <div className="card h-100">
                 {post.image && (
                   <img 
@@ -173,30 +175,43 @@ function PostsPage() {
                 )}
                 <div className="card-body">
                   <div className="d-flex align-items-center mb-3">
-                    <Link to={`/profile/${post.author._id}`} className="text-decoration-none">
-                      {post.author.profileImage ? (
-                        <img 
-                          src={post.author.profileImage} 
-                          alt={post.author.username} 
-                          className="rounded-circle me-2" 
-                          width="40" 
-                          height="40" 
-                        />
-                      ) : (
-                        <div className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style={{ width: "40px", height: "40px" }}>
-                          {post.author.username.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                    </Link>
-                    <div>
+                    {post.author ? (
                       <Link to={`/profile/${post.author._id}`} className="text-decoration-none">
-                        <span className="fw-bold">{post.author.username}</span>
+                        {post.author.profileImage ? (
+                          <img 
+                            src={post.author.profileImage} 
+                            alt={post.author.username} 
+                            className="rounded-circle me-2" 
+                            width="40" 
+                            height="40" 
+                          />
+                        ) : (
+                          <div className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style={{ width: "40px", height: "40px" }}>
+                            {post.author.username.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <span className="fw-bold">{post.author.username}</span>
+                          <br />
+                          <small className="text-muted">
+                            {new Date(post.createdAt).toLocaleDateString()}
+                          </small>
+                        </div>
                       </Link>
-                      <br />
-                      <small className="text-muted">
-                        {new Date(post.createdAt).toLocaleDateString()}
-                      </small>
-                    </div>
+                    ) : (
+                      <div className="d-flex align-items-center">
+                        <div className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style={{ width: "40px", height: "40px" }}>
+                          <i className="bi bi-person"></i>
+                        </div>
+                        <div>
+                          <span className="fw-bold">Unknown User</span>
+                          <br />
+                          <small className="text-muted">
+                            {new Date(post.createdAt).toLocaleDateString()}
+                          </small>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <h5 className="card-title">{post.title}</h5>
@@ -209,7 +224,7 @@ function PostsPage() {
                   {post.tags && post.tags.length > 0 && (
                     <div className="mb-3">
                       {post.tags.map((tag, index) => (
-                        <span key={index} className="badge bg-light text-dark me-1">
+                        <span key={`${post._id}-tag-${index}`} className="badge bg-light text-dark me-1">
                           #{tag}
                         </span>
                       ))}
@@ -219,13 +234,13 @@ function PostsPage() {
                   <div className="d-flex justify-content-between align-items-center">
                     <div>
                       <button 
-                        className={`btn btn-sm ${post.likes.includes(currentUser?._id) 
+                        className={`btn btn-sm ${isAuthenticated && post.likes && Array.isArray(post.likes) && post.likes.includes(currentUser?._id) 
                           ? "btn-danger" 
                           : "btn-outline-danger"}`}
                         onClick={() => likePost(post._id)}
                       >
                         <i className="bi bi-heart-fill me-1"></i>
-                        {post.likes.length}
+                        {Array.isArray(post.likes) ? post.likes.length : 0}
                       </button>
                       
                       <Link to={`/posts/${post._id}`} className="btn btn-sm btn-outline-primary ms-2">
