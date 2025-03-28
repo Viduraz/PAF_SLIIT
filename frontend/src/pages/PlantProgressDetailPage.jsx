@@ -1,279 +1,113 @@
-import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../utils/AuthContext";
-import PlantProgressService from "../services/plantProgressService";
+import React, { useState } from 'react';
+import { useAuth } from '../utils/AuthContext'; // Import your AuthContext here
 
-function PlantProgressDetailPage() {
-  const { progressId } = useParams();
-  const navigate = useNavigate();
-  const { currentUser, isAuthenticated } = useAuth();
-  const [progress, setProgress] = useState(null);
-  const [notes, setNotes] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const PlantProgressDetailPage = () => {
+  const { currentUser } = useAuth(); // Retrieve logged-in user info from AuthContext
+  const [steps, setSteps] = useState([]); // Store the steps entered by the user
+  const [progress, setProgress] = useState(0); // Progress value
+  const [completed, setCompleted] = useState(false); // Track if the progress is completed
+  const [formInput, setFormInput] = useState(''); // Store form input for steps
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
+  // Handle input change for the steps form
+  const handleInputChange = (e) => {
+    setFormInput(e.target.value);
+  };
 
-    fetchProgressDetails();
-  }, [progressId, isAuthenticated, navigate]);
+  // Submit form and generate the steps
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const parsedSteps = formInput.split('\n').map(step => step.trim()).filter(step => step.length > 0);
+    setSteps(parsedSteps); // Set the steps entered by the user
+    setProgress(0); // Reset progress
+    setCompleted(false); // Reset completed state
+    setFormInput(''); // Clear the form input
+  };
 
-  const fetchProgressDetails = async () => {
-    try {
-      setLoading(true);
-      const response = await PlantProgressService.getProgressDetail(progressId);
-      setProgress(response.data);
-      setNotes(response.data.notes || "");
-      setLoading(false);
-    } catch (err) {
-      setError("Failed to load progress details");
-      setLoading(false);
-      console.error(err);
+  // Update the progress when a step button is clicked
+  const updateProgress = (increment) => {
+    const newProgress = Math.min(progress + increment, 100); // Prevent progress from going over 100%
+    setProgress(newProgress);
+    if (newProgress === 100) {
+      setCompleted(true); // Set completed to true when 100% is reached
     }
   };
 
-  const handleCompleteMilestone = async (milestoneId) => {
-    try {
-      setIsSubmitting(true);
-      await PlantProgressService.completeMilestone(progressId, milestoneId);
-      fetchProgressDetails(); // Refresh data
-    } catch (err) {
-      console.error("Failed to complete milestone:", err);
-      alert("Failed to update progress. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSaveNotes = async () => {
-    try {
-      setIsSubmitting(true);
-      await PlantProgressService.updateNotes(progressId, notes);
-      alert("Notes saved successfully!");
-    } catch (err) {
-      console.error("Failed to save notes:", err);
-      alert("Failed to save notes. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteProgress = async () => {
-    if (!confirm("Are you sure you want to delete your progress on this planting plan? This action cannot be undone.")) {
-      return;
-    }
-
-    try {
-      await PlantProgressService.deleteProgress(progressId);
-      navigate("/planting-plans");
-      alert("Progress tracking deleted successfully");
-    } catch (err) {
-      console.error("Failed to delete progress:", err);
-      alert("Failed to delete progress. Please try again.");
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="text-center mt-5">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return <div className="alert alert-danger mt-3">{error}</div>;
-  }
-
-  if (!progress) {
-    return <div className="alert alert-warning mt-3">Progress not found</div>;
-  }
-
-  // Check if the current user owns this progress
-  const isOwner = currentUser && progress.user === currentUser._id;
-  if (!isOwner) {
-    return <div className="alert alert-danger mt-3">You don't have permission to view this progress</div>;
-  }
-
-  const completedMilestoneIds = progress.completedMilestones.map(m => m._id);
-  
   return (
-    <div className="container mt-4">
-      <nav aria-label="breadcrumb">
-        <ol className="breadcrumb">
-          <li className="breadcrumb-item">
-            <Link to="/planting-plans">Planting Plans</Link>
-          </li>
-          <li className="breadcrumb-item">
-            <Link to={`/planting-plans/${progress.plantingPlan._id}`}>
-              {progress.plantingPlan.title}
-            </Link>
-          </li>
-          <li className="breadcrumb-item active" aria-current="page">
-            My Progress
-          </li>
-        </ol>
-      </nav>
+    <div className="max-w-lg mx-auto p-4">
+      {/* Display logged-in user's name at the top */}
+      {currentUser && (
+        <div className="text-center text-xl font-semibold mb-4">
+          Welcome, {currentUser.username}!
+        </div>
+      )}
 
-      <div className="row">
-        <div className="col-md-8">
-          <div className="card mb-4">
-            <div className="card-body">
-              <h2 className="card-title mb-3">
-                {progress.plantingPlan.title} - My Progress
-              </h2>
-              
-              <div className="mb-4">
-                <div className="progress" style={{ height: "30px" }}>
-                  <div 
-                    className="progress-bar bg-success progress-bar-striped" 
-                    role="progressbar" 
-                    style={{ width: `${progress.progressPercentage}%` }} 
-                    aria-valuenow={progress.progressPercentage} 
-                    aria-valuemin="0" 
-                    aria-valuemax="100"
-                  >
-                    {progress.progressPercentage}% Complete
-                  </div>
-                </div>
-                <div className="d-flex justify-content-between mt-2">
-                  <small className="text-muted">
-                    Started: {new Date(progress.createdAt).toLocaleDateString()}
-                  </small>
-                  <small className="text-muted">
-                    Last updated: {new Date(progress.updatedAt).toLocaleDateString()}
-                  </small>
-                </div>
-              </div>
-              
-              <h4 className="mb-3">Milestones</h4>
-              <div className="list-group mb-4">
-                {progress.plantingPlan.milestones.map((milestone, index) => {
-                  const isCompleted = completedMilestoneIds.includes(milestone._id);
-                  
-                  return (
-                    <div 
-                      key={milestone._id} 
-                      className={`list-group-item ${isCompleted ? 'list-group-item-success' : ''}`}
-                    >
-                      <div className="d-flex justify-content-between align-items-center">
-                        <div>
-                          <h5 className="mb-1">
-                            {index + 1}. {milestone.title}
-                            {isCompleted && <i className="bi bi-check-circle-fill text-success ms-2"></i>}
-                          </h5>
-                          <p className="mb-1">{milestone.description}</p>
-                          {milestone.tips && (
-                            <small className="text-muted">
-                              <strong>Tip:</strong> {milestone.tips}
-                            </small>
-                          )}
-                        </div>
-                        
-                        {!isCompleted && (
-                          <button 
-                            className="btn btn-success"
-                            onClick={() => handleCompleteMilestone(milestone._id)}
-                            disabled={isSubmitting}
-                          >
-                            Mark Complete
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              
-              <h4 className="mb-3">My Notes</h4>
-              <div className="mb-3">
-                <textarea
-                  className="form-control"
-                  rows="5"
-                  placeholder="Write your notes, observations, or reminders here..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                ></textarea>
-              </div>
-              <button 
-                className="btn btn-primary"
-                onClick={handleSaveNotes}
-                disabled={isSubmitting}
-              >
-                Save Notes
-              </button>
-            </div>
+      <h2 className="text-2xl font-semibold text-center mb-4">Track Your Plant's Progress</h2>
+
+      {/* Step Input Form */}
+      <form onSubmit={handleSubmit} className="mb-6">
+        <label className="block mb-2 text-sm font-medium text-gray-700">Enter steps (one per line):</label>
+        <textarea
+          value={formInput}
+          onChange={handleInputChange}
+          rows="5"
+          className="w-full px-3 py-2 border rounded-md text-gray-700"
+          placeholder="Step 1: Prepare soil... (Enter steps one per line)"
+        />
+        <button
+          type="submit"
+          className="mt-4 w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+        >
+          Submit Steps
+        </button>
+      </form>
+
+      {/* Progress Bar */}
+      <div className="relative pt-1">
+        <div className="flex mb-2 items-center justify-between">
+          <div>
+            <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full bg-green-200 text-green-600">
+              Progress
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-green-600">
+              {progress}%
+            </span>
           </div>
         </div>
-        
-        <div className="col-md-4">
-          <div className="card mb-4">
-            <div className="card-header">
-              <h5 className="card-title mb-0">Progress Summary</h5>
-            </div>
-            <div className="card-body">
-              <ul className="list-group list-group-flush">
-                <li className="list-group-item d-flex justify-content-between align-items-center">
-                  Completed Milestones
-                  <span className="badge bg-success rounded-pill">
-                    {progress.completedMilestones.length} of {progress.plantingPlan.milestones.length}
-                  </span>
-                </li>
-                <li className="list-group-item d-flex justify-content-between align-items-center">
-                  Progress
-                  <span className="badge bg-primary rounded-pill">
-                    {progress.progressPercentage}%
-                  </span>
-                </li>
-                <li className="list-group-item d-flex justify-content-between align-items-center">
-                  Days Since Start
-                  <span className="badge bg-info rounded-pill">
-                    {Math.floor((new Date() - new Date(progress.createdAt)) / (1000 * 60 * 60 * 24))}
-                  </span>
-                </li>
-              </ul>
-            </div>
-          </div>
-          
-          {progress.progressPercentage === 100 && (
-            <div className="card mb-4 bg-success text-white">
-              <div className="card-body text-center">
-                <h5 className="card-title">🎉 Congratulations! 🎉</h5>
-                <p className="card-text">You've completed all milestones in this planting plan!</p>
-                {progress.badges && progress.badges.length > 0 && (
-                  <div>
-                    <p>You've earned:</p>
-                    <div className="d-flex justify-content-center">
-                      {progress.badges.map((badge, index) => (
-                        <div key={index} className="badge bg-light text-success p-2 mx-1" title={badge.description}>
-                          {badge.name}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          <div className="d-grid gap-2">
-            <button 
-              className="btn btn-outline-danger"
-              onClick={handleDeleteProgress}
-            >
-              Delete Progress Tracking
-            </button>
+        <div className="flex mb-2">
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div
+              className="bg-green-500 h-2.5 rounded-full"
+              style={{ width: `${progress}%` }}
+            ></div>
           </div>
         </div>
       </div>
+
+      {/* Dynamically created buttons based on the steps */}
+      {steps.length > 0 && (
+        <div className="flex flex-col space-y-2">
+          {steps.map((step, index) => (
+            <button
+              key={index}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+              onClick={() => updateProgress((100 / steps.length))}
+            >
+              {`Stage ${index + 1}: ${step}`}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Congratulations message */}
+      {completed && (
+        <div className="mt-4 text-center text-xl font-bold text-green-600">
+          Congratulations! Your plant is fully grown! 🌱🎉
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default PlantProgressDetailPage;
