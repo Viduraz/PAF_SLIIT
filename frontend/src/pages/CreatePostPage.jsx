@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import PostService from "../services/postService";
@@ -15,10 +15,16 @@ function CreatePostPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Redirect if not logged in
+  // Move navigation to useEffect
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/login");
+    }
+  }, [isAuthenticated, navigate]);
+
+  // If not authenticated, don't render the form
   if (!isAuthenticated) {
-    navigate("/login");
-    return null;
+    return null; // Return null during initial render, useEffect will handle redirect
   }
 
   const handleChange = (e) => {
@@ -46,8 +52,18 @@ function CreatePostPage() {
       };
       
       const response = await PostService.createPost(processedData);
-      navigate(`/posts/${response.data._id}`);
+      console.log("Post created response:", response.data);
+      
+      // Check if we got a valid post ID back
+      if (response.data && response.data._id) {
+        navigate(`/posts/${response.data._id}`);
+      } else {
+        // Navigate to the posts list if we don't have a valid post ID
+        setError("Post was created but couldn't retrieve its details. Redirecting to posts list.");
+        setTimeout(() => navigate("/posts"), 2000);
+      }
     } catch (err) {
+      console.error("Error creating post:", err);
       setError("Failed to create post. " + (err.response?.data?.message || "Please try again."));
       setIsSubmitting(false);
     }

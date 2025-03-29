@@ -1,5 +1,4 @@
-import React from 'react'
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import PostService from "../services/postService";
@@ -15,19 +14,41 @@ function PostDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    // If no postId is provided, redirect to posts listing
+    if (!postId || postId === 'undefined') {
+      console.error("Invalid post ID:", postId);
+      navigate('/posts'); // Redirect to posts list instead of showing an error
+      return;
+    }
+    
     fetchPost();
-  }, [postId]);
+  }, [postId, navigate]); // Include navigate in dependencies
 
   const fetchPost = async () => {
+    if (!postId || postId === 'undefined') return;
+    
     try {
       setLoading(true);
       const response = await PostService.getPostById(postId);
-      setPost(response.data);
+      
+      // Check if the response data is valid
+      if (!response.data) {
+        throw new Error("Post not found");
+      }
+      
+      // Ensure likes and comments arrays exist
+      const postData = {
+        ...response.data,
+        likes: response.data.likes || [],
+        comments: response.data.comments || []
+      };
+      
+      setPost(postData);
       setLoading(false);
     } catch (err) {
-      setError("Failed to load post");
+      console.error("Error fetching post:", err);
+      setError("Failed to load post: " + (err.response?.status === 404 ? "Post not found" : err.message));
       setLoading(false);
-      console.error(err);
     }
   };
 
@@ -42,12 +63,16 @@ function PostDetailPage() {
       
       // Update post in the state
       setPost(prevPost => {
-        const alreadyLiked = prevPost.likes.includes(currentUser._id);
+        // Ensure prevPost.likes is an array
+        const currentLikes = Array.isArray(prevPost.likes) ? prevPost.likes : [];
+        const currentUserId = currentUser._id || currentUser.id;
+        const alreadyLiked = currentLikes.includes(currentUserId);
+        
         return {
           ...prevPost,
           likes: alreadyLiked 
-            ? prevPost.likes.filter(id => id !== currentUser._id)
-            : [...prevPost.likes, currentUser._id]
+            ? currentLikes.filter(id => id !== currentUserId)
+            : [...currentLikes, currentUserId]
         };
       });
     } catch (err) {
@@ -65,12 +90,28 @@ function PostDetailPage() {
 
     try {
       setIsSubmitting(true);
-      const response = await PostService.addComment(postId, { content: comment });
+      // Send the comment with reference to the post
+      const response = await PostService.addComment(postId, { 
+        content: comment,
+        // Include author information if needed by your backend
+        authorId: currentUser._id || currentUser.id
+      });
+      
+      // Add author information to the comment for UI display
+      const newComment = {
+        ...response.data,
+        author: {
+          _id: currentUser._id || currentUser.id,
+          username: currentUser.username,
+          profileImage: currentUser.profileImage
+        },
+        createdAt: new Date().toISOString()
+      };
       
       // Update post in the state to include the new comment
       setPost(prevPost => ({
         ...prevPost,
-        comments: [...prevPost.comments, response.data]
+        comments: [...(prevPost.comments || []), newComment]
       }));
       
       setComment("");
@@ -91,7 +132,7 @@ function PostDetailPage() {
       // Update post in the state to remove the deleted comment
       setPost(prevPost => ({
         ...prevPost,
-        comments: prevPost.comments.filter(c => c._id !== commentId)
+        comments: (prevPost.comments || []).filter(c => c._id !== commentId)
       }));
     } catch (err) {
       console.error("Failed to delete comment:", err);
@@ -131,9 +172,20 @@ function PostDetailPage() {
   if (!post) {
     return <div className="alert alert-warning mt-3">Post not found</div>;
   }
+  
+  // Ensure likes and comments exist
+  const likes = Array.isArray(post.likes) ? post.likes : [];
+  const comments = Array.isArray(post.comments) ? post.comments : [];
 
-  const isAuthor = isAuthenticated && currentUser._id === post.author._id;
-  const isLiked = isAuthenticated && post.likes.includes(currentUser._id);
+  const isAuthor = isAuthenticated && currentUser && post.author && 
+    (currentUser._id === post.author._id || currentUser.id === post.author.id);
+  
+  // Fix the isLiked calculation with a more robust approach
+  let isLiked = false;
+  if (isAuthenticated && currentUser && Array.isArray(likes)) {
+    const currentUserId = currentUser._id || currentUser.id;
+    isLiked = likes.includes(currentUserId);
+  }
 
   return (
     <div className="container mt-4">
@@ -151,25 +203,40 @@ function PostDetailPage() {
       <div className="card mb-4">
         <div className="card-body">
           <div className="d-flex align-items-center mb-4">
-            <Link to={`/profile/${post.author._id}`} className="text-decoration-none">
-              {post.author.profileImage ? (
-                <img 
-                  src={post.author.profileImage} 
-                  alt={post.author.username} 
-                  className="rounded-circle me-3" 
-                  width="50" 
-                  height="50" 
-                />
-              ) : (
-                <div className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3" style={{ width: "50px", height: "50px" }}>
-                  {post.author.username.charAt(0).toUpperCase()}
-                </div>
-              )}
-            </Link>
-            <div>
-              <Link to={`/profile/${post.author._id}`} className="text-decoration-none">
-                <h5 className="mb-0">{post.author.username}</h5>
+            {post.author ? (
+              <Link to={`/profile/${post.author._id || post.author.id}`} className="text-decoration-none">
+                {post.author.profileImage ? (
+                  <img 
+                    src={post.author.profileImage} 
+                    alt={post.author.username} 
+                    className="rounded-circle me-3" 
+                    width="50" 
+                    height="50" 
+                  />
+                ) : (
+                  <div className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3" style={{ width: "50px", height: "50px" }}>
+                    {post.author.username.charAt(0).toUpperCase()}
+                  </div>
+                )}
               </Link>
+            ) : (
+              <div className="d-flex align-items-center">
+                <div className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3" style={{ width: "50px", height: "50px" }}>
+                  <i className="bi bi-person"></i>
+                </div>
+                <div>
+                  <span className="fw-bold">Unknown User</span>
+                </div>
+              </div>
+            )}
+            <div>
+              {post.author ? (
+                <Link to={`/profile/${post.author._id || post.author.id}`} className="text-decoration-none">
+                  <h5 className="mb-0">{post.author.username}</h5>
+                </Link>
+              ) : (
+                <h5 className="mb-0">Unknown User</h5>
+              )}
               <small className="text-muted">
                 Posted on {new Date(post.createdAt).toLocaleDateString()}
               </small>
@@ -212,7 +279,7 @@ function PostDetailPage() {
                 disabled={!isAuthenticated}
               >
                 <i className="bi bi-heart-fill me-1"></i>
-                {post.likes.length} {post.likes.length === 1 ? "Like" : "Likes"}
+                {likes.length} {likes.length === 1 ? "Like" : "Likes"}
               </button>
               
               <button 
@@ -220,13 +287,16 @@ function PostDetailPage() {
                 onClick={() => document.getElementById('commentInput').focus()}
               >
                 <i className="bi bi-chat-fill me-1"></i>
-                {post.comments.length} {post.comments.length === 1 ? "Comment" : "Comments"}
+                {comments.length} {comments.length === 1 ? "Comment" : "Comments"}
+              </button>
+              <button className="btn btn-sm btn-link" onClick={() => window.scrollTo(0, 0)}>
+                Back to Top
               </button>
             </div>
             
             {isAuthor && (
               <div>
-                <Link to={`/posts/${post._id}/edit`} className="btn btn-outline-secondary me-2">
+                <Link to={`/posts/${post._id || post.id}/edit`} className="btn btn-outline-secondary me-2">
                   Edit
                 </Link>
                 <button 
@@ -243,7 +313,7 @@ function PostDetailPage() {
 
       <div className="card mb-4">
         <div className="card-header">
-          <h4 className="mb-0">Comments ({post.comments.length})</h4>
+          <h4 className="mb-0">Comments ({comments.length})</h4>
         </div>
         <div className="card-body">
           {isAuthenticated ? (
@@ -273,40 +343,54 @@ function PostDetailPage() {
             </div>
           )}
 
-          {post.comments.length > 0 ? (
+          {comments.length > 0 ? (
             <div className="comment-list">
-              {post.comments.map(comment => (
-                <div key={comment._id} className="card mb-3">
+              {comments.map(comment => (
+                <div key={comment._id || `temp-${Date.now()}`} className="card mb-3">
                   <div className="card-body">
                     <div className="d-flex justify-content-between align-items-center mb-2">
                       <div className="d-flex align-items-center">
-                        <Link to={`/profile/${comment.author._id}`} className="text-decoration-none">
-                          {comment.author.profileImage ? (
-                            <img 
-                              src={comment.author.profileImage} 
-                              alt={comment.author.username} 
-                              className="rounded-circle me-2" 
-                              width="40" 
-                              height="40" 
-                            />
-                          ) : (
-                            <div className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style={{ width: "40px", height: "40px" }}>
-                              {comment.author.username.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                        </Link>
-                        <div>
-                          <Link to={`/profile/${comment.author._id}`} className="text-decoration-none">
-                            <span className="fw-bold">{comment.author.username}</span>
+                        {comment.author ? (
+                          <Link to={`/profile/${comment.author._id || comment.author.id}`} className="text-decoration-none">
+                            {comment.author.profileImage ? (
+                              <img 
+                                src={comment.author.profileImage} 
+                                alt={comment.author.username} 
+                                className="rounded-circle me-2" 
+                                width="40" 
+                                height="40" 
+                              />
+                            ) : (
+                              <div className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style={{ width: "40px", height: "40px" }}>
+                                {comment.author.username.charAt(0).toUpperCase()}
+                              </div>
+                            )}
                           </Link>
+                        ) : (
+                          <div className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style={{ width: "40px", height: "40px" }}>
+                            <i className="bi bi-person"></i>
+                          </div>
+                        )}
+                        <div>
+                          {comment.author ? (
+                            <Link to={`/profile/${comment.author._id || comment.author.id}`} className="text-decoration-none">
+                              <span className="fw-bold">{comment.author.username}</span>
+                            </Link>
+                          ) : (
+                            <span className="fw-bold">Unknown User</span>
+                          )}
                           <br />
                           <small className="text-muted">
-                            {new Date(comment.createdAt).toLocaleString()}
+                            {new Date(comment.createdAt || Date.now()).toLocaleString()}
                           </small>
                         </div>
                       </div>
                       
-                      {(isAuthenticated && (currentUser._id === comment.author._id || currentUser._id === post.author._id)) && (
+                      {(isAuthenticated && comment.author && (
+                        (currentUser._id === comment.author._id) || 
+                        (currentUser.id === comment.author.id) || 
+                        isAuthor
+                      )) && (
                         <button 
                           className="btn btn-sm btn-outline-danger"
                           onClick={() => handleDeleteComment(comment._id)}
