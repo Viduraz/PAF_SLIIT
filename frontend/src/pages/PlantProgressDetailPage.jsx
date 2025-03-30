@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { CheckCircle, Circle, Plus } from "lucide-react";
+import leafIcon from "../images/progress/leaf.png"; // Importing the image
 
 const PlantProgressDetailPage = () => {
   const { currentUser } = useAuth();
@@ -10,11 +11,9 @@ const PlantProgressDetailPage = () => {
   const [formInput, setFormInput] = useState("");
   const [completedSteps, setCompletedSteps] = useState([]);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [notes, setNotes] = useState({}); // Object to store notes for each step
+  const [notes, setNotes] = useState({});
 
-  const handleInputChange = (e) => {
-    setFormInput(e.target.value);
-  };
+  const handleInputChange = (e) => setFormInput(e.target.value);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -30,46 +29,30 @@ const PlantProgressDetailPage = () => {
   };
 
   const toggleStepCompletion = (index) => {
-    if (!isEditMode && completedSteps[index]) {
-      // In normal mode, if the step is already completed, do nothing
-      return;
-    }
+    if (!isEditMode && completedSteps[index]) return;
+    if (index > 0 && !completedSteps[index - 1] && !isEditMode) return;
 
-    // If the previous step is not completed and we're not in edit mode, prevent going ahead
-    if (index > 0 && !completedSteps[index - 1] && !isEditMode) {
-      return;
-    }
-
-    // Toggle step completion in edit mode or normal mode
     const newCompletedSteps = [...completedSteps];
     newCompletedSteps[index] = !newCompletedSteps[index];
     setCompletedSteps(newCompletedSteps);
 
-    // If the step is undone, also remove the note
-    if (!newCompletedSteps[index]) {
-      const newNotes = { ...notes };
-      delete newNotes[index]; // Remove the note when the step is undone
-      setNotes(newNotes);
-    }
-
-    // Update progress
     const completedCount = newCompletedSteps.filter((step) => step).length;
     const newProgress = Math.round((completedCount / steps.length) * 100);
     setProgress(newProgress);
 
-    // If all steps are completed
-    if (newProgress === 100) {
-      setCompleted(true);
-    } else {
-      setCompleted(false);
+    if (newProgress === 100) setCompleted(true);
+    else setCompleted(false);
+
+    // Remove note if step is undone in edit mode
+    if (isEditMode && !newCompletedSteps[index]) {
+      const newNotes = { ...notes };
+      delete newNotes[index];
+      setNotes(newNotes);
     }
   };
 
-  const toggleEditMode = () => {
-    setIsEditMode(!isEditMode);
-  };
+  const toggleEditMode = () => setIsEditMode(!isEditMode);
 
-  // Function to handle adding notes
   const handleNoteChange = (index, event) => {
     const newNotes = { ...notes, [index]: event.target.value };
     setNotes(newNotes);
@@ -107,65 +90,53 @@ const PlantProgressDetailPage = () => {
       </form>
 
       {/* Progress bar */}
-      <div className="bg-white p-10 rounded-lg shadow-md  max-w-screen-xl mx-auto">
-      {" "}
+      <div className="bg-white p-10 rounded-lg shadow-md w-full max-w-screen-xl mx-auto">
         <div className="relative pt-1 mb-4">
-          <div className="relative pt-1 mb-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-semibold text-green-600">
-                Progress
-              </span>
-              <span className="text-sm font-semibold text-green-600">
-                {progress}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-              <div
-                className="bg-green-300 h-2.5 rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-semibold text-green-600">Progress</span>
+            <span className="text-sm font-semibold text-green-600">{progress}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+            <div
+              className="bg-green-500 h-2.5 rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            ></div>
           </div>
         </div>
+
         {/* Steps buttons */}
         {steps.length > 0 && (
           <div className="flex flex-wrap gap-3">
             {steps.map((step, index) => (
               <div key={index} className="flex flex-col items-center">
                 <button
-                  className={`flex items-center justify-between px-6 py-3 border rounded-lg transition-all duration-300 text-left ${
+                  className={`flex items-center gap-3 px-6 py-3 border rounded-lg transition-all duration-300 text-left ${
                     completedSteps[index]
                       ? "bg-green-500 text-white"
                       : "bg-white text-gray-700"
                   } hover:shadow-md`}
                   onClick={() => toggleStepCompletion(index)}
-                  disabled={!isEditMode && completedSteps[index]} // Disable if already completed and not in edit mode
+                  disabled={!isEditMode && completedSteps[index]}
                 >
+                  {/* Leaf Image */}
+                  <img src={leafIcon} alt="Leaf" className="w-6 h-6" />
+
                   <span>{`Stage ${index + 1}: ${step}`}</span>
-                  {completedSteps[index] ? (
-                    <CheckCircle size={24} />
-                  ) : (
-                    <Circle size={24} />
-                  )}
+                  {completedSteps[index] ? <CheckCircle size={24} /> : <Circle size={24} />}
                 </button>
 
-                {/* Only show the Plus icon if the step is completed */}
-                {completedSteps[index] && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Open note input on Plus icon click
-                      const newNotes = { ...notes };
-                      if (!newNotes[index]) {
-                        newNotes[index] = "";
-                      }
-                      setNotes(newNotes);
-                    }}
-                    className="mt-2 text-green-500 hover:text-green-600"
-                  >
-                    <Plus size={20} />
-                  </button>
-                )}
+                {/* Plus icon to add notes */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newNotes = { ...notes };
+                    if (!newNotes[index]) newNotes[index] = "";
+                    setNotes(newNotes);
+                  }}
+                  className="mt-2 text-green-500 hover:text-green-600"
+                >
+                  <Plus size={20} />
+                </button>
 
                 {/* Notes input field */}
                 {notes[index] !== undefined && (
@@ -193,7 +164,7 @@ const PlantProgressDetailPage = () => {
       {/* Edit Mode Toggle Button */}
       <button
         onClick={toggleEditMode}
-        className="mt-4 w-full px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-blue-600 transition"
+        className="mt-4 w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
       >
         {isEditMode ? "Exit Edit Mode" : "Edit Mode"}
       </button>
