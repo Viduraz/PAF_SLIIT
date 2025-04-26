@@ -20,6 +20,7 @@ function HomePage() {
             <div className="d-flex gap-2">
               <Link to="/plans" className="btn btn-success">View Planting Plans</Link>
               <Link to="/posts" className="btn btn-outline-success">Browse Community Posts</Link>
+              <Link to="/plant-progress/:progressId" className="btn btn-outline-success">Add a Plant Progress</Link>
             </div>
           </div>
         ) : (
