@@ -6,8 +6,16 @@ const UserService = {
     return api.post("/users/register", userData);
   },
   
-  login: (credentials) => {
-    return api.post("/users/login", credentials);
+  login: async (credentials) => {
+    try {
+      console.log('Login request payload:', credentials);
+      const response = await api.post("/users/login", credentials);
+      console.log('Login response:', response.data);
+      return response;
+    } catch (error) {
+      console.error('Login service error:', error.response || error);
+      throw error;
+    }
   },
   
   getCurrentUser: () => {
