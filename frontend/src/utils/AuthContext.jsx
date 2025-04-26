@@ -9,21 +9,42 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is stored in localStorage on app startup
-    const storedUser = localStorage.getItem('currentUser');
-    const token = localStorage.getItem('token');
-    
-    if (storedUser && token) {
-      setCurrentUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    // Restore authentication state on page load
+    const restoreAuth = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('currentUser');
+
+        if (token && storedUser) {
+          // Temporarily set the user from localStorage to avoid flickering
+          setCurrentUser(JSON.parse(storedUser));
+
+          // Validate the token with the backend
+          try {
+            const response = await UserService.getCurrentUser();
+            setCurrentUser(response.data); // Update with fresh data from the backend
+          } catch (error) {
+            console.error('Token validation failed:', error);
+            // If token validation fails, clear the user state
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('token');
+            setCurrentUser(null);
+          }
+        }
+      } catch (error) {
+        console.error('Error restoring authentication:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restoreAuth();
   }, []);
 
   const login = (userData) => {
     setCurrentUser(userData.user || userData);
     localStorage.setItem('currentUser', JSON.stringify(userData.user || userData));
-    
-    // Store token if it exists in the response
     if (userData.token) {
       localStorage.setItem('token', userData.token);
     }
@@ -35,27 +56,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
   };
 
-  const fetchCurrentUser = async () => {
-    try {
-      const response = await UserService.getCurrentUser();
-      setCurrentUser(response.data);
-      return response.data;
-    } catch (error) {
-      console.error("Failed to fetch current user:", error);
-      logout();
-      return null;
-    }
-  };
-
   return (
-    <AuthContext.Provider value={{ 
-      currentUser, 
-      login, 
-      logout, 
-      loading,
-      fetchCurrentUser,
-      isAuthenticated: !!currentUser 
-    }}>
+    <AuthContext.Provider value={{ currentUser, login, logout, loading, isAuthenticated: !!currentUser }}>
       {children}
     </AuthContext.Provider>
   );

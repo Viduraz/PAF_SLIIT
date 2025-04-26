@@ -1,5 +1,6 @@
 // src/services/userService.js
 import api from "./api";
+import axios from "axios";
 
 const UserService = {
   register: (userData) => {
@@ -18,8 +19,13 @@ const UserService = {
     }
   },
   
-  getCurrentUser: () => {
-    return api.get("/users/me");
+  getCurrentUser: async () => {
+    const token = localStorage.getItem('token');
+    return axios.get('/api/users/me', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
   },
   
   updateProfile: (userId, userData) => {
@@ -28,6 +34,14 @@ const UserService = {
   
   getUserProfile: (userId) => {
     return api.get(`/users/${userId}`);
+  },
+  
+  getUserByUsername: (username) => {
+    return api.get(`/users/username/${username}`);
+  },
+  
+  getUserPosts: (userId) => {
+    return api.get(`/users/${userId}/posts`);
   }
 };
 
