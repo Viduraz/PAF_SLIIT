@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../utils/AuthContext';
+import PlantingPlanService from '../services/plantingPlanService';
 import '../styles/cursor.css';
 
 const plantCategories = {
@@ -30,6 +33,12 @@ const plantCategories = {
 };
 
 function PlantingForm() {
+    const navigate = useNavigate();
+    const { currentUser, isAuthenticated } = useAuth();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState(false);
+    
     const [plantingData, setPlantingData] = useState({
         plantType: '',
         datePlanted: '',
@@ -40,6 +49,12 @@ function PlantingForm() {
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
     useEffect(() => {
+        // Redirect if not authenticated
+        if (!isAuthenticated) {
+            navigate('/login?redirect=plantingfoam');
+            return;
+        }
+        
         const updateMousePosition = (e) => {
             setMousePosition({ x: e.clientX, y: e.clientY });
         };
@@ -49,7 +64,7 @@ function PlantingForm() {
         return () => {
             window.removeEventListener('mousemove', updateMousePosition);
         };
-    }, []);
+    }, [isAuthenticated, navigate]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -99,10 +114,43 @@ function PlantingForm() {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log(plantingData);
-        // Here you would typically handle the submission to your backend
+        setLoading(true);
+        setError("");
+        setSuccess(false);
+        
+        try {
+            // Format data for API
+            const planData = {
+                title: `${plantingData.plantType} Planting Plan`,
+                description: `Growing ${plantingData.plantType} from ${plantingData.datePlanted} with expected harvest on ${plantingData.expectedHarvest}`,
+                userId: currentUser._id,
+                milestones: plantingData.steps.map((step, index) => ({
+                    title: `Step ${index + 1}`,
+                    description: step.description,
+                    orderIndex: index,
+                    resources: [] // Photo uploads would require a separate file upload service
+                })),
+                isPublic: true,
+                tags: [plantingData.plantType.toLowerCase(), "growing", "planting"]
+            };
+            
+            // Send to backend
+            const response = await PlantingPlanService.createPlan(planData);
+            
+            setSuccess(true);
+            setLoading(false);
+            
+            // Navigate to the created plan details page after a short delay
+            setTimeout(() => {
+                navigate(`/planting-plans/${response.data.id}`);
+            }, 1500);
+        } catch (err) {
+            console.error("Error creating planting plan:", err);
+            setError("Failed to create planting plan. Please try again.");
+            setLoading(false);
+        }
     };
 
     return (
@@ -163,8 +211,7 @@ function PlantingForm() {
                         </p>
                     </motion.div>
                     
-                    <motion.div 
-                        className="p-8">
+                    <motion.div className="p-8">
                         <motion.div
                             initial={{ rotate: -10, scale: 0.9 }}
                             animate={{ 
@@ -200,7 +247,23 @@ function PlantingForm() {
                             🌿
                         </motion.div>
                         
-                        {/* Existing form content */}
+                        {/* Success message */}
+                        {success && (
+                            <div className="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+                                <strong className="font-bold">Success!</strong>
+                                <span className="block sm:inline"> Your planting plan has been created. Redirecting you to the details page...</span>
+                            </div>
+                        )}
+                        
+                        {/* Error message */}
+                        {error && (
+                            <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                                <strong className="font-bold">Error!</strong>
+                                <span className="block sm:inline"> {error}</span>
+                            </div>
+                        )}
+                        
+                        {/* Form content */}
                         <form onSubmit={handleSubmit} className="space-y-6 relative" style={{ zIndex: 1 }}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="bg-green-50 p-4 rounded-lg">
@@ -211,6 +274,7 @@ function PlantingForm() {
                                         onChange={handleChange}
                                         className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                                         required
+                                        disabled={loading}
                                     >
                                         <option value="">Select a plant type</option>
                                         {Object.entries(plantCategories).map(([category, plants]) => (
@@ -234,6 +298,7 @@ function PlantingForm() {
                                         onChange={handleChange}
                                         className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                                         required
+                                        disabled={loading}
                                     />
                                 </div>
                             </div>
@@ -263,6 +328,7 @@ function PlantingForm() {
                                                         type="button"
                                                         onClick={() => handleDeleteStep(index)}
                                                         className="px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                                                        disabled={loading}
                                                     >
                                                         Remove Step
                                                     </button>
@@ -275,6 +341,7 @@ function PlantingForm() {
                                                 placeholder="Describe this growth step..."
                                                 rows="3"
                                                 required
+                                                disabled={loading}
                                             />
                                             <div className="mt-3">
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -285,7 +352,11 @@ function PlantingForm() {
                                                     onChange={(e) => handlePhotoChange(index, e)}
                                                     className="w-full"
                                                     multiple
+                                                    disabled={loading}
                                                 />
+                                                <small className="text-gray-500 mt-1 block">
+                                                    Note: Photo upload is not fully implemented in this version
+                                                </small>
                                             </div>
                                         </motion.div>
                                     ))}
@@ -296,6 +367,7 @@ function PlantingForm() {
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                     className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                                    disabled={loading}
                                 >
                                     <span>➕ Add Another Step</span>
                                 </motion.button>
@@ -310,6 +382,7 @@ function PlantingForm() {
                                     onChange={handleChange}
                                     className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                                     required
+                                    disabled={loading}
                                 />
                             </div>
 
@@ -317,9 +390,19 @@ function PlantingForm() {
                                 type="submit"
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="w-full px-6 py-4 bg-green-600 text-white text-lg font-semibold rounded-lg hover:bg-green-700 transition-colors mt-8 shadow-lg"
+                                className={`w-full px-6 py-4 text-white text-lg font-semibold rounded-lg transition-colors mt-8 shadow-lg ${
+                                    loading ? 'bg-gray-500 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                                }`}
+                                disabled={loading}
                             >
-                                🌿 Submit Planting Plan
+                                {loading ? (
+                                    <>
+                                        <span className="inline-block animate-spin mr-2">🔄</span>
+                                        Submitting...
+                                    </>
+                                ) : (
+                                    <>🌿 Submit Planting Plan</>
+                                )}
                             </motion.button>
                         </form>
                     </motion.div>
