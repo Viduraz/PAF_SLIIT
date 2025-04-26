@@ -20,12 +20,7 @@ const UserService = {
   },
   
   getCurrentUser: async () => {
-    const token = localStorage.getItem('token');
-    return axios.get('/api/users/me', {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
+    return api.get("/users/me");
   },
   
   updateProfile: (userId, userData) => {
