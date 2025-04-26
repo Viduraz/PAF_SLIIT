@@ -43,12 +43,28 @@ function PostsPage() {
           break;
       }
 
-      setPosts(response.data);
+      console.log("Fetched posts response:", response.data);
+
+      // Fetch comments for each post
+      const postsWithComments = await Promise.all(
+        response.data.map(async (post) => {
+          const commentsResponse = await CommentService.getCommentsByReference("POST", post._id || post.id);
+          return {
+            ...post,
+            _id: post._id || post.id,
+            comments: commentsResponse.data || [],
+          };
+        })
+      );
+
+      console.log("Posts with comments:", postsWithComments);
+
+      setPosts(postsWithComments);
       setLoading(false);
     } catch (err) {
       setError("Failed to load posts");
       setLoading(false);
-      console.error(err);
+      console.error("Error fetching posts:", err);
     }
   };
 
@@ -110,18 +126,33 @@ function PostsPage() {
       return;
     }
 
+    // Validate postId
+    if (!postId || postId === "undefined") {
+      console.error("Invalid post ID:", postId);
+      alert("Failed to add comment: Invalid post ID");
+      return;
+    }
+
     try {
+      console.log("Adding comment to post ID:", postId); // Debugging log
       const newComment = await CommentService.addComment(postId, {
         content: commentText,
         authorId: currentUser._id,
       });
+
+      // Append the new comment to the comments array of the corresponding post
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post._id === postId
-            ? { ...post, comments: [...(post.comments || []), newComment.data] }
+            ? {
+                ...post,
+                comments: [...(post.comments || []), newComment.data], // Append the new comment
+              }
             : post
         )
       );
+
+      // Clear the comment input field
       setCommentTexts((prev) => ({ ...prev, [postId]: "" }));
     } catch (err) {
       console.error("Failed to add comment:", err);
@@ -463,21 +494,25 @@ function PostsPage() {
                     
                     {isAuthenticated && (
                       <div className="mt-2">
-                        <div className="input-group">
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Add a comment..."
-                            value={commentTexts[post._id] || ""}
-                            onChange={(e) => handleCommentTextChange(post._id, e.target.value)}
-                          />
-                          <button
-                            className="btn btn-outline-primary"
-                            onClick={() => handleAddComment(post._id)}
-                          >
-                            <i className="bi bi-send"></i>
-                          </button>
-                        </div>
+                        {post._id ? (
+                          <div className="input-group">
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="Add a comment..."
+                              value={commentTexts[post._id] || ""}
+                              onChange={(e) => handleCommentTextChange(post._id, e.target.value)}
+                            />
+                            <button
+                              className="btn btn-outline-primary"
+                              onClick={() => handleAddComment(post._id)}
+                            >
+                              <i className="bi bi-send"></i>
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-danger">Error: Post ID is missing</p>
+                        )}
                       </div>
                     )}
                   </div>

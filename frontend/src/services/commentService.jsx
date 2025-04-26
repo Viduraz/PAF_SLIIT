@@ -14,6 +14,9 @@ const CommentService = {
   deleteComment: (commentId) => {
     return api.delete(`/comments/${commentId}`);
   },
+  getCommentsByReference: (referenceType, referenceId) => {
+    return api.get(`/comments/references?referenceType=${referenceType}&referenceId=${referenceId}`);
+  },
 };
 
 export default CommentService;

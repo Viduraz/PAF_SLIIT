@@ -1,6 +1,7 @@
 package com.agriapp.service.impl;
 
 import com.agriapp.model.Post;
+import com.agriapp.repository.CommentRepository;
 import com.agriapp.repository.PostRepository;
 import com.agriapp.service.PostService;
 import org.springframework.stereotype.Service;
@@ -8,13 +9,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import javax.xml.stream.events.Comment;
+
 @Service
 public class PostServiceImpl implements PostService {
 
     private final PostRepository postRepository;
+    private final CommentRepository commentRepository;
 
-    public PostServiceImpl(PostRepository postRepository) {
+    public PostServiceImpl(PostRepository postRepository, CommentRepository commentRepository) {
         this.postRepository = postRepository;
+        this.commentRepository = commentRepository;
     }
 
     @Override
@@ -31,7 +36,12 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public List<Post> getAllPosts() {
-        return postRepository.findAll();
+        List<Post> posts = postRepository.findAll();
+        for (Post post : posts) {
+            List<com.agriapp.model.Comment> comments = commentRepository.findByReferenceTypeAndReferenceId("POST", post.getId());
+            post.setComments(comments); // Add a `setComments` method in the `Post` model
+        }
+        return posts;
     }
 
     @Override
