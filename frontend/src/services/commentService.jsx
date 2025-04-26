@@ -1,0 +1,19 @@
+import api from "./api";
+
+const CommentService = {
+  addComment: (postId, commentData) => {
+    return api.post(`/comments`, {
+      ...commentData,
+      referenceType: "POST",
+      referenceId: postId,
+    });
+  },
+  updateComment: (commentId, commentData) => {
+    return api.put(`/comments/${commentId}`, commentData);
+  },
+  deleteComment: (commentId) => {
+    return api.delete(`/comments/${commentId}`);
+  },
+};
+
+export default CommentService;

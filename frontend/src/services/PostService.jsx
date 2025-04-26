@@ -3,17 +3,17 @@ import api from "./api";
 const PostService = {
   // Get all posts (paginated and sorted by date)
   getAllPosts: (page = 1, limit = 10) => {
-    return api.get(`/posts?page=${page}&limit=${limit}`);
+    return api.get(`/posts?page=${page}&limit=${limit}&includeAuthor=true`);
   },
 
   // Get popular posts (sorted by likes)
   getPopularPosts: (page = 1, limit = 10) => {
-    return api.get(`/posts/popular?page=${page}&limit=${limit}`);
+    return api.get(`/posts/popular?page=${page}&limit=${limit}&includeAuthor=true`);
   },
 
   // Get posts from users the current user follows
   getFollowingPosts: (page = 1, limit = 10) => {
-    return api.get(`/posts/following?page=${page}&limit=${limit}`);
+    return api.get(`/posts/following?page=${page}&limit=${limit}&includeAuthor=true`);
   },
 
   // Get a specific post
