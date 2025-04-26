@@ -1,15 +1,20 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import PostService from "../services/postService";
+import CommentService from "../services/commentService";
 
 function PostsPage() {
+  const navigate = useNavigate();
   const { currentUser, isAuthenticated } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState("latest"); // latest, popular, following
+  const [filter, setFilter] = useState("latest");
   const [searchTerm, setSearchTerm] = useState("");
+  const [commentTexts, setCommentTexts] = useState({});
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingText, setEditingText] = useState("");
 
   useEffect(() => {
     fetchPosts();
@@ -74,13 +79,10 @@ function PostsPage() {
 
     try {
       await PostService.likePost(postId);
-      
-      // Update the post in the state
+
       setPosts(posts.map(post => {
         if (post._id === postId) {
-          // Make sure post.likes is an array
           const currentLikes = Array.isArray(post.likes) ? post.likes : [];
-          // Toggle like
           const alreadyLiked = currentLikes.includes(currentUser._id);
           return {
             ...post,
@@ -94,6 +96,127 @@ function PostsPage() {
     } catch (err) {
       console.error("Failed to like post:", err);
     }
+  };
+
+  const handleAddComment = async (postId) => {
+    if (!isAuthenticated) {
+      alert("You need to login to add a comment");
+      return;
+    }
+
+    const commentText = commentTexts[postId] || "";
+    if (!commentText.trim()) {
+      alert("Comment cannot be empty");
+      return;
+    }
+
+    try {
+      const newComment = await CommentService.addComment(postId, {
+        content: commentText,
+        authorId: currentUser._id,
+      });
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post._id === postId
+            ? { ...post, comments: [...(post.comments || []), newComment.data] }
+            : post
+        )
+      );
+      setCommentTexts((prev) => ({ ...prev, [postId]: "" }));
+    } catch (err) {
+      console.error("Failed to add comment:", err);
+    }
+  };
+
+  const handleEditComment = async (commentId, postId) => {
+    if (!isAuthenticated) {
+      alert("You need to login to edit a comment");
+      return;
+    }
+
+    try {
+      const updatedComment = await CommentService.updateComment(commentId, {
+        content: editingText,
+      });
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post._id === postId
+            ? {
+                ...post,
+                comments: post.comments.map((comment) =>
+                  comment._id === commentId ? updatedComment.data : comment
+                ),
+              }
+            : post
+        )
+      );
+      setEditingCommentId(null);
+      setEditingText("");
+    } catch (err) {
+      console.error("Failed to edit comment:", err);
+    }
+  };
+
+  const handleDeleteComment = async (commentId, postId) => {
+    if (!isAuthenticated) {
+      alert("You need to login to delete a comment");
+      return;
+    }
+
+    try {
+      await CommentService.deleteComment(commentId);
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post._id === postId
+            ? {
+                ...post,
+                comments: post.comments.filter((comment) => comment._id !== commentId),
+              }
+            : post
+        )
+      );
+    } catch (err) {
+      console.error("Failed to delete comment:", err);
+    }
+  };
+
+  const handleCommentTextChange = (postId, text) => {
+    setCommentTexts((prev) => ({ ...prev, [postId]: text }));
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (!isAuthenticated) {
+      alert("You need to login to delete a post");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to delete this post? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      await PostService.deletePost(postId);
+      setPosts(posts.filter(post => post._id !== postId));
+      alert("Post deleted successfully");
+    } catch (err) {
+      console.error("Failed to delete post:", err);
+      alert("Failed to delete post. Please try again.");
+    }
+  };
+
+  const handleEditPost = (postId) => {
+    navigate(`/posts/${postId}/edit`);
+  };
+
+  const isCommentAuthor = (comment) => {
+    if (!isAuthenticated || !currentUser || !comment || !comment.author) {
+      return false;
+    }
+    
+    const currentUserId = currentUser._id || currentUser.id;
+    const authorId = comment.author._id || comment.author.id;
+    
+    return currentUserId === authorId;
   };
 
   if (loading && posts.length === 0) {
@@ -175,8 +298,8 @@ function PostsPage() {
                 )}
                 <div className="card-body">
                   <div className="d-flex align-items-center mb-3">
-                    {post.author ? (
-                      <Link to={`/profile/${post.author._id}`} className="text-decoration-none">
+                    {post.author && post.author.username ? (
+                      <Link to={`/profile/${post.author._id || post.author.id}`} className="text-decoration-none">
                         {post.author.profileImage ? (
                           <img 
                             src={post.author.profileImage} 
@@ -204,7 +327,9 @@ function PostsPage() {
                           <i className="bi bi-person"></i>
                         </div>
                         <div>
-                          <span className="fw-bold">Unknown User</span>
+                          <span className="fw-bold">
+                            {post.userId ? `User-${post.userId.substring(0, 5)}...` : "Unknown User"}
+                          </span>
                           <br />
                           <small className="text-muted">
                             {new Date(post.createdAt).toLocaleDateString()}
@@ -215,6 +340,25 @@ function PostsPage() {
                   </div>
                   
                   <h5 className="card-title">{post.title}</h5>
+                  
+                  {isAuthenticated && currentUser && post.author && 
+                   (currentUser._id === post.author._id || currentUser.id === post.author._id) && (
+                    <div className="mb-3">
+                      <button
+                        className="btn btn-sm btn-outline-primary me-2"
+                        onClick={() => handleEditPost(post._id)}
+                      >
+                        <i className="bi bi-pencil"></i> Edit
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => handleDeletePost(post._id)}
+                      >
+                        <i className="bi bi-trash"></i> Delete
+                      </button>
+                    </div>
+                  )}
+                  
                   <p className="card-text">
                     {post.content.length > 150 
                       ? post.content.substring(0, 150) + "..." 
@@ -252,6 +396,90 @@ function PostsPage() {
                     <Link to={`/posts/${post._id}`} className="btn btn-sm btn-link">
                       Read More
                     </Link>
+                  </div>
+
+                  <div className="mt-3">
+                    <h6>Comments</h6>
+                    {post.comments && post.comments.length > 0 ? (
+                      post.comments.map((comment) => (
+                        <div key={comment._id} className="p-2 border-bottom">
+                          <div className="d-flex justify-content-between">
+                            <strong>{comment.author?.username || "Anonymous"}:</strong>
+                            {isCommentAuthor(comment) && (
+                              <div>
+                                <button
+                                  className="btn btn-sm btn-link py-0"
+                                  onClick={() => {
+                                    setEditingCommentId(comment._id);
+                                    setEditingText(comment.content);
+                                  }}
+                                >
+                                  <i className="bi bi-pencil"></i>
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-link text-danger py-0"
+                                  onClick={() => handleDeleteComment(comment._id, post._id)}
+                                >
+                                  <i className="bi bi-trash"></i>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {editingCommentId === comment._id ? (
+                            <div className="mt-1">
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                              />
+                              <div className="mt-1">
+                                <button
+                                  className="btn btn-sm btn-primary me-2"
+                                  onClick={() => handleEditComment(comment._id, post._id)}
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-outline-secondary"
+                                  onClick={() => {
+                                    setEditingCommentId(null);
+                                    setEditingText("");
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div>{comment.content}</div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted small">No comments yet</p>
+                    )}
+                    
+                    {isAuthenticated && (
+                      <div className="mt-2">
+                        <div className="input-group">
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Add a comment..."
+                            value={commentTexts[post._id] || ""}
+                            onChange={(e) => handleCommentTextChange(post._id, e.target.value)}
+                          />
+                          <button
+                            className="btn btn-outline-primary"
+                            onClick={() => handleAddComment(post._id)}
+                          >
+                            <i className="bi bi-send"></i>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
