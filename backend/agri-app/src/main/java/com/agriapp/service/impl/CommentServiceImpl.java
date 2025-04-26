@@ -66,7 +66,25 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public void deleteComment(String id) {
-        commentRepository.deleteById(id);
+        // Add additional logging for debugging
+        System.out.println("Attempting to delete comment with ID: " + id);
+        
+        // Get the comment first to log its details before deletion
+        Optional<Comment> commentOpt = commentRepository.findById(id);
+        
+        if (commentOpt.isPresent()) {
+            Comment comment = commentOpt.get();
+            System.out.println("Found comment to delete: " + comment.getId() + 
+                               ", referenceType: " + comment.getReferenceType() + 
+                               ", referenceId: " + comment.getReferenceId());
+            
+            // Now delete it
+            commentRepository.deleteById(id);
+            System.out.println("Comment successfully deleted");
+        } else {
+            System.err.println("Comment with ID " + id + " not found for deletion");
+            throw new RuntimeException("Comment not found with ID: " + id);
+        }
     }
 
     @Override
