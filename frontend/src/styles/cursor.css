@@ -1,3 +1,4 @@
+/* Custom cursor styles */
 .leaf-cursor {
   cursor: none;
 }
@@ -29,25 +30,49 @@
     align-items: center;
     justify-content: center;
     color: #22c55e;
-}
-
-button:hover ~ .cursor .cursor-content,
-select:hover ~ .cursor .cursor-content,
-input:hover ~ .cursor .cursor-content,
-textarea:hover ~ .cursor .cursor-content {
-    transform: rotate(-45deg) scale(1.2);
     transition: transform 0.2s ease;
 }
 
-/* Allow normal cursor interaction on interactive elements */
-button, 
-input, 
-select, 
-textarea, 
-a {
-    cursor: pointer !important;
+/* Interactive element hover effects */
+button:hover ~ .cursor .cursor-content,
+select:hover ~ .cursor .cursor-content,
+input:hover ~ .cursor .cursor-content,
+textarea:hover ~ .cursor .cursor-content,
+a:hover ~ .cursor .cursor-content {
+    transform: rotate(-45deg) scale(1.2);
 }
 
-* {
+/* Only apply custom cursor when .leaf-cursor class is applied to body */
+body.leaf-cursor * {
     cursor: none !important;
+}
+
+/* Interactive elements cursor styles (only when custom cursor is active) */
+body.leaf-cursor button, 
+body.leaf-cursor input, 
+body.leaf-cursor select, 
+body.leaf-cursor textarea, 
+body.leaf-cursor a {
+    cursor: none !important;
+}
+
+/* Fallback for when custom cursor is not active */
+body:not(.leaf-cursor) * {
+    cursor: default;
+}
+
+body:not(.leaf-cursor) button, 
+body:not(.leaf-cursor) input[type="submit"], 
+body:not(.leaf-cursor) input[type="button"], 
+body:not(.leaf-cursor) select, 
+body:not(.leaf-cursor) a {
+    cursor: pointer;
+}
+
+body:not(.leaf-cursor) input[type="text"], 
+body:not(.leaf-cursor) input[type="password"], 
+body:not(.leaf-cursor) input[type="email"], 
+body:not(.leaf-cursor) input[type="number"], 
+body:not(.leaf-cursor) textarea {
+    cursor: text;
 }
