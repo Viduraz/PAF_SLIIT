@@ -26,7 +26,26 @@ const PostService = {
 
   // Create a new post
   createPost: (postData) => {
-    return api.post("/posts", postData);
+    return api.post("/posts", postData)
+      .then(response => {
+        console.log("Create post API response:", response);
+        // Check for both id and _id to handle both backend formats
+        if (!response.data || (!response.data._id && !response.data.id)) {
+          console.error("API returned success but without proper post data:", response);
+        }
+        return {
+          ...response,
+          data: {
+            ...response.data,
+            // Create a consistent _id property for the frontend
+            _id: response.data._id || response.data.id
+          }
+        };
+      })
+      .catch(error => {
+        console.error("Create post API error:", error);
+        throw error;
+      });
   },
 
   // Update a post
@@ -41,17 +60,25 @@ const PostService = {
 
   // Like/unlike a post
   likePost: (postId) => {
+    // Try POST method instead of PUT if that's what your backend expects
     return api.post(`/posts/${postId}/like`);
   },
 
   // Add a comment to a post
   addComment: (postId, commentData) => {
-    return api.post(`/posts/${postId}/comments`, commentData);
+    // Make sure we're sending the right format for your backend
+    return api.post(`/comments`, {
+      content: commentData.content,
+      referenceType: "POST",
+      referenceId: postId,
+      authorId: commentData.authorId
+    });
   },
 
   // Delete a comment
   deleteComment: (postId, commentId) => {
-    return api.delete(`/posts/${postId}/comments/${commentId}`);
+    // Use the comments endpoint directly
+    return api.delete(`/comments/${commentId}`);
   },
 
   // Search posts by keyword
@@ -66,7 +93,18 @@ const PostService = {
 
   // Get user's posts
   getUserPosts: (userId) => {
-    return api.get(`/posts/user/${userId}`);
+    // Try different API endpoints since the current one returns 404
+    return api.get(`/posts?userId=${userId}`)
+      .then(response => {
+        // Normalize the data to ensure each post has an _id field
+        return {
+          ...response,
+          data: Array.isArray(response.data) ? response.data.map(post => ({
+            ...post,
+            _id: post._id || post.id
+          })) : response.data
+        };
+      });
   }
 };
 

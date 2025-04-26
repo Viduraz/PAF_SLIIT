@@ -52,8 +52,18 @@ function CreatePostPage() {
       };
       
       const response = await PostService.createPost(processedData);
-      navigate(`/posts/${response.data._id}`);
+      console.log("Post created response:", response.data);
+      
+      // Check if we got a valid post ID back
+      if (response.data && response.data._id) {
+        navigate(`/posts/${response.data._id}`);
+      } else {
+        // Navigate to the posts list if we don't have a valid post ID
+        setError("Post was created but couldn't retrieve its details. Redirecting to posts list.");
+        setTimeout(() => navigate("/posts"), 2000);
+      }
     } catch (err) {
+      console.error("Error creating post:", err);
       setError("Failed to create post. " + (err.response?.data?.message || "Please try again."));
       setIsSubmitting(false);
     }

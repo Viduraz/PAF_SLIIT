@@ -128,4 +128,27 @@ public class UserServiceImpl implements UserService {
         // In a production app, you would use BCrypt: return bCryptPasswordEncoder.matches(rawPassword, encodedPassword);
         return rawPassword.equals(encodedPassword);
     }
+
+    @Override
+    public User getUserFromToken(String token) {
+        try {
+            // Decode the Base64 token
+            byte[] decodedBytes = Base64.getDecoder().decode(token);
+            String decodedToken = new String(decodedBytes);
+            
+            // Extract the user ID from the token (format is "userId:username:timestamp")
+            String[] parts = decodedToken.split(":");
+            if (parts.length < 2) {
+                return null;
+            }
+            
+            String userId = parts[0];
+            
+            // Get the user from the repository
+            return userRepository.findById(userId).orElse(null);
+        } catch (Exception e) {
+            // If there's any error in decoding or finding the user, return null
+            return null;
+        }
+    }
 }
