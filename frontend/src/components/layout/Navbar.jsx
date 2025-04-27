@@ -74,6 +74,14 @@ function Navbar() {
                   Planting Plans
                 </span>
               </Link>
+              <Link className="bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 px-3 py-2 rounded-md text-sm font-medium shadow-md flex items-center transition-all duration-300" to="/plantingfoam">
+                <span className="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Track New Plant
+                </span>
+              </Link>
               <Link className="text-white hover:bg-green-700 px-3 py-2 rounded-md text-sm font-medium" to="/posts">
                 <span className="flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -201,6 +209,18 @@ function Navbar() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
               Planting Plans
+            </span>
+          </Link>
+          <Link 
+            to="/plantingfoam" 
+            className="text-white bg-green-600 hover:bg-green-700 block px-3 py-2 rounded-md text-base font-medium my-2"
+            onClick={() => setShowDropdown(false)}
+          >
+            <span className="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Track New Plant
             </span>
           </Link>
           <Link 
