@@ -19,6 +19,7 @@ public class Post {
     private LocalDateTime updatedAt;
     private int likes = 0;
     private int shares = 0;
+    private List<Comment> comments = new ArrayList<>();
     
     // Constructors
     public Post() {
@@ -105,5 +106,13 @@ public class Post {
     
     public void setShares(int shares) {
         this.shares = shares;
+    }
+    
+    public List<Comment> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<Comment> comments) {
+        this.comments = comments;
     }
 }
