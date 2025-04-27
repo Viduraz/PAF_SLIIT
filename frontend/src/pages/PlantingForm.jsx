@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import PlantingPlanService from '../services/plantingPlanService';
 import '../styles/cursor.css';
@@ -50,10 +50,10 @@ function PlantingForm() {
 
     useEffect(() => {
         // Redirect if not authenticated
-        if (!isAuthenticated) {
-            navigate('/login?redirect=plantingfoam');
-            return;
-        }
+        // if (!isAuthenticated) {
+        //     navigate('/login?redirect=plantingfoam');
+        //     return;
+        // }
         
         const updateMousePosition = (e) => {
             setMousePosition({ x: e.clientX, y: e.clientY });
@@ -125,7 +125,7 @@ function PlantingForm() {
             const planData = {
                 title: `${plantingData.plantType} Planting Plan`,
                 description: `Growing ${plantingData.plantType} from ${plantingData.datePlanted} with expected harvest on ${plantingData.expectedHarvest}`,
-                userId: currentUser._id,
+                userId: currentUser?._id || currentUser?.id,
                 milestones: plantingData.steps.map((step, index) => ({
                     title: `Step ${index + 1}`,
                     description: step.description,
@@ -144,7 +144,7 @@ function PlantingForm() {
             
             // Navigate to the created plan details page after a short delay
             setTimeout(() => {
-                navigate(`/planting-plans/${response.data.id}`);
+                navigate(`/planting-plans/${response.data._id || response.data.id}`);
             }, 1500);
         } catch (err) {
             console.error("Error creating planting plan:", err);
@@ -152,6 +152,36 @@ function PlantingForm() {
             setLoading(false);
         }
     };
+
+    // If not authenticated, show a message instead of the form
+    if (!isAuthenticated) {
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-green-50 to-green-100 py-12 px-4 flex items-center justify-center">
+                <div className="max-w-md mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
+                    <div className="bg-green-600 py-6 px-8">
+                        <h1 className="text-3xl font-bold text-center text-white">
+                            🌱 Plant Growth Tracking
+                        </h1>
+                    </div>
+                    <div className="p-8 text-center">
+                        <div className="text-8xl mb-4">🔒</div>
+                        <h2 className="text-xl font-semibold mb-4">Authentication Required</h2>
+                        <p className="mb-6">You need to be logged in to create a planting plan.</p>
+                        <div className="flex flex-col space-y-3">
+                            <Link to="/login?redirect=plantingfoam" 
+                                  className="w-full px-6 py-3 text-white text-lg font-semibold rounded-lg bg-green-600 hover:bg-green-700 transition-colors">
+                                Log In
+                            </Link>
+                            <Link to="/register" 
+                                  className="w-full px-6 py-3 text-green-700 text-lg font-semibold rounded-lg border border-green-600 hover:bg-green-50 transition-colors">
+                                Create Account
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>

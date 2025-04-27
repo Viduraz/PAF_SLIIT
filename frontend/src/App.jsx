@@ -7,8 +7,8 @@ import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
-import PlantingPlansPage from "./pages/PlantingPlansPage";
-import PlantingPlanDetailPage from "./pages/PlantingPlanDetailPage";
+import PlantingPlanExplorer from "./pages/PlantingPlanExplorer";
+import PlantingPlanDetail from "./pages/PlantingPlanDetail";
 import PlantProgressDetailPage from "./pages/PlantProgressDetailPage";
 import PostsPage from "./pages/PostsPage";
 import PostDetailPage from "./pages/PostDetailPage";
@@ -31,8 +31,8 @@ function App() {
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/profile/:username" element={<ProfilePage />} />
-              <Route path="/planting-plans" element={<PlantingPlansPage />} />
-              <Route path="/planting-plans/:planId" element={<PlantingPlanDetailPage />} />
+              <Route path="/planting-plans" element={<PlantingPlanExplorer />} />
+              <Route path="/planting-plans/:planId" element={<PlantingPlanDetail />} />
               <Route path="/plant-progress/:progressId" element={<PlantProgressDetailPage />} />
               <Route path="/posts" element={<PostsPage />} />
               <Route path="/posts/new" element={<CreatePostPage />} />
