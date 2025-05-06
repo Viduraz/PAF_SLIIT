@@ -2,6 +2,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { FaSeedling, FaUsers, FaMedal, FaLeaf } from 'react-icons/fa';
+import agriImage from '../images/home/agri.png'; // ✅ Import the image
 
 function HomePage() {
   const { currentUser } = useAuth();
@@ -18,8 +19,16 @@ function HomePage() {
             Your platform for tracking plant growth, sharing agricultural knowledge,
             and connecting with a community of plant enthusiasts.
           </p>
+
+          {/* ✅ Added Agri Image */}
+          <img
+            src={agriImage}
+            alt="Sri Lankan Agriculture"
+            className="w-full max-w-full mx-auto rounded-lg shadow-lg mb-6"
+          />
+
           <div className="h-0.5 bg-white bg-opacity-30 w-full my-6"></div>
-          
+
           {currentUser ? (
             <div className="space-y-4">
               <p className="text-white text-lg">Track your plants, share your progress, and learn from others.</p>
@@ -50,7 +59,7 @@ function HomePage() {
           )}
         </div>
       </div>
-      
+
       {/* Feature Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
         {/* Card 1 */}
