@@ -76,13 +76,11 @@ public class PlantProgressController {
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
-    @PostMapping("/{id}/milestones")
+    @PutMapping("/{id}/milestones")
     public ResponseEntity<?> completeMilestone(@PathVariable String id, @RequestBody PlantProgress.CompletedMilestone milestone) {
         try {
-            // Print debug information
             System.out.println("Received milestone: " + milestone.getMilestoneId() + ", Date: " + milestone.getCompletedAt());
             
-            // If completedAt is null, set it to current time
             if (milestone.getCompletedAt() == null) {
                 milestone.setCompletedAt(LocalDateTime.now());
             }
@@ -91,13 +89,8 @@ public class PlantProgressController {
             return new ResponseEntity<>(HttpStatus.OK);
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(Map.of(
-                    "error", e.getMessage(),
-                    "milestone", milestone.getMilestoneId(),
-                    "progress", id
-                ));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", e.getMessage()));
         }
     }
 

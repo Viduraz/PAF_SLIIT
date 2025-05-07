@@ -25,11 +25,17 @@ const PlantProgressService = {
   },
 
   // Complete a milestone
-  completeMilestone: (progressId, milestoneId) => {
-    return api.post(`/progress/${progressId}/milestones`, {
-      milestoneId: milestoneId,
-      completedAt: new Date().toISOString()
-    });
+  completeMilestone: (progressId, milestone) => {
+    console.log("Sending milestone completion:", {progressId, milestone});
+    
+    // Ensure the date is in the correct format for Spring Boot's LocalDateTime
+    if (milestone.completedAt) {
+      // Ensure timezone information is properly handled
+      milestone.completedAt = milestone.completedAt.replace('Z', '');
+    }
+    
+    // Try with PUT instead of POST
+    return api.put(`/progress/${progressId}/milestones`, milestone);
   },
 
   // Update notes

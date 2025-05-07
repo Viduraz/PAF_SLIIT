@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.ArrayList;
 
 @Service
 public class PlantProgressServiceImpl implements PlantProgressService {
@@ -167,9 +168,6 @@ public class PlantProgressServiceImpl implements PlantProgressService {
             if (!progress.getAwardedBadges().contains(badge)) {
                 progress.getAwardedBadges().add(badge);
                 
-                // Also add badge to user profile
-                userService.addBadge(progress.getUserId(), badge);
-                
                 progress.setLastUpdatedAt(LocalDateTime.now());
                 plantProgressRepository.save(progress);
             }
@@ -211,6 +209,10 @@ public class PlantProgressServiceImpl implements PlantProgressService {
     
     // Helper method to check completion and award badges
     private void checkAndAwardBadges(PlantProgress progress, PlantingPlan plantingPlan) {
+        if (progress.getAwardedBadges() == null) {
+            progress.setAwardedBadges(new ArrayList<>());
+        }
+        
         // Award badge for 100% completion
         if (progress.getProgressPercentage() >= 100 && 
                 !progress.getAwardedBadges().contains("COMPLETION_MASTER")) {
@@ -225,6 +227,7 @@ public class PlantProgressServiceImpl implements PlantProgressService {
         
         // If the plant was coffee, award coffee specific badge on completion
         if (progress.getProgressPercentage() >= 100 && 
+                plantingPlan.getTags() != null && 
                 plantingPlan.getTags().contains("coffee") && 
                 !progress.getAwardedBadges().contains("COFFEE_GROWER")) {
             awardBadge(progress.getId(), "COFFEE_GROWER");
