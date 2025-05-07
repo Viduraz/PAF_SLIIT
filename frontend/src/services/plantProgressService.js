@@ -38,8 +38,14 @@ const PlantProgressService = {
     return api.put(`/progress/${progressId}/milestones`, milestone);
   },
 
-  // Update notes
+  // Update the entire progress object
+  updateProgress: (progressId, progressData) => {
+    return api.put(`/progress/${progressId}`, progressData);
+  },
+
+  // Update notes (use the method above)
   updateNotes: (progressId, notes) => {
+    console.warn("This method is deprecated. Use updateProgress instead.");
     return api.put(`/progress/${progressId}`, {
       notes: notes
     });

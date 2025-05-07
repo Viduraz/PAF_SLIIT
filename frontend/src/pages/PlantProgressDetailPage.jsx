@@ -38,6 +38,16 @@ function PlantProgressDetailPage() {
   const [showModal, setShowModal] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   
+  // Edit mode state
+  const [isEditMode, setIsEditMode] = useState(false);
+  
+  // Add this state to store edited notes
+  const [editedNotes, setEditedNotes] = useState("");
+
+  // Add these state variables for editing milestone notes
+  const [editingMilestoneId, setEditingMilestoneId] = useState(null);
+  const [editedMilestoneNote, setEditedMilestoneNote] = useState("");
+
   useEffect(() => {
     const fetchProgressData = async () => {
       try {
@@ -183,6 +193,65 @@ function PlantProgressDetailPage() {
     } catch (err) {
       console.error("Failed to start tracking progress:", err);
       alert("Failed to start tracking this plan. Please try again.");
+    }
+  };
+
+  // Add this function to handle saving notes
+  const handleSaveNotes = async () => {
+    try {
+      setLoadingAction(true);
+      await PlantProgressService.updateNotes(progressId, editedNotes);
+      
+      // Update local state
+      setProgress({
+        ...progress,
+        notes: editedNotes
+      });
+      
+      // Exit edit mode
+      setIsEditMode(false);
+      setLoadingAction(false);
+    } catch (err) {
+      console.error("Error updating notes:", err);
+      setLoadingAction(false);
+      alert("Failed to update notes. Please try again.");
+    }
+  };
+
+  // Add this function to handle saving edited milestone notes
+  const handleSaveMilestoneNote = async (milestoneId) => {
+    try {
+      setLoadingAction(true);
+      
+      // Find the milestone to update
+      const updatedMilestones = progress.completedMilestones.map(milestone => {
+        if (milestone.milestoneId === milestoneId) {
+          return { ...milestone, notes: editedMilestoneNote };
+        }
+        return milestone;
+      });
+      
+      // Create updated progress object
+      const updatedProgress = {
+        ...progress,
+        completedMilestones: updatedMilestones
+      };
+      
+      // Update in database
+      await PlantProgressService.updateProgress(progressId, updatedProgress);
+      
+      // Update local state
+      setProgress(updatedProgress);
+      
+      // Exit edit mode
+      setEditingMilestoneId(null);
+      setEditedMilestoneNote("");
+      
+      setLoadingAction(false);
+    } catch (err) {
+      console.error("Error updating milestone note:", err);
+      setLoadingAction(false);
+      alert("Failed to update milestone note. Please try again.");
     }
   };
   
@@ -372,9 +441,23 @@ function PlantProgressDetailPage() {
                       <h3 className="text-lg font-medium text-gray-800">
                         {index + 1}. {milestoneDetails?.title || "Unknown milestone"}
                       </h3>
-                      <span className="text-sm text-gray-500">
-                        {new Date(milestone.completedAt).toLocaleDateString()}
-                      </span>
+                      <div className="flex items-center">
+                        {isOwner && (
+                          <button
+                            onClick={() => {
+                              setEditingMilestoneId(milestone.milestoneId);
+                              setEditedMilestoneNote(milestone.notes || "");
+                            }}
+                            className="mr-3 text-blue-600 hover:text-blue-800"
+                            title="Edit notes"
+                          >
+                            <FaEdit />
+                          </button>
+                        )}
+                        <span className="text-sm text-gray-500">
+                          {new Date(milestone.completedAt).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
                     
                     {milestoneDetails && (
@@ -383,10 +466,39 @@ function PlantProgressDetailPage() {
                       </p>
                     )}
                     
-                    {milestone.notes && (
-                      <div className="bg-white p-3 rounded mt-2 italic text-gray-600">
-                        "{milestone.notes}"
+                    {editingMilestoneId === milestone.milestoneId ? (
+                      <div className="mt-3">
+                        <textarea
+                          value={editedMilestoneNote}
+                          onChange={(e) => setEditedMilestoneNote(e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          rows="3"
+                          placeholder="Add your notes about this milestone..."
+                        ></textarea>
+                        <div className="flex justify-end gap-2 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingMilestoneId(null)}
+                            className="px-4 py-1 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveMilestoneNote(milestone.milestoneId)}
+                            className="px-4 py-1 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+                            disabled={loadingAction}
+                          >
+                            {loadingAction ? "Saving..." : "Save Notes"}
+                          </button>
+                        </div>
                       </div>
+                    ) : (
+                      milestone.notes && (
+                        <div className="bg-white p-3 rounded mt-2 italic text-gray-600">
+                          "{milestone.notes}"
+                        </div>
+                      )
                     )}
                     
                     {milestone.mediaUrls && milestone.mediaUrls.length > 0 && (
@@ -509,7 +621,10 @@ function PlantProgressDetailPage() {
             <div className="mt-8 border-t border-gray-200 pt-6 flex gap-4">
               <button
                 type="button"
-                onClick={() => navigate(`/plant-progress/${progressId}/edit`)}
+                onClick={() => {
+                  setEditedNotes(progress.notes || "");
+                  setIsEditMode(true);
+                }}
                 className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center"
               >
                 <FaEdit className="mr-2" /> Edit Progress
@@ -521,6 +636,52 @@ function PlantProgressDetailPage() {
               >
                 <FaTrash className="mr-2" /> Delete Progress
               </button>
+            </div>
+          )}
+
+          {/* Edit Mode Form */}
+          {isEditMode && (
+            <div className="mt-6 bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Edit Progress Notes</h3>
+              
+              <div className="mb-4">
+                <label className="block text-gray-700 font-medium mb-2">
+                  Notes
+                </label>
+                <textarea
+                  value={editedNotes}
+                  onChange={(e) => setEditedNotes(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  rows="6"
+                  placeholder="Add notes about your overall progress..."
+                ></textarea>
+              </div>
+              
+              <div className="flex justify-end gap-4">
+                <button
+                  type="button"
+                  onClick={() => setIsEditMode(false)}
+                  className="px-6 py-2 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveNotes}
+                  className="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+                  disabled={loadingAction}
+                >
+                  {loadingAction ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </span>
+                  ) : 'Save Changes'}
+                </button>
+              </div>
             </div>
           )}
         </div>
