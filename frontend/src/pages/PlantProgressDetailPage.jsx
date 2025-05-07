@@ -1,351 +1,578 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../utils/AuthContext';
+import { 
+  FaSeedling, 
+  FaLeaf, 
+  FaCalendarAlt, 
+  FaClipboardCheck, 
+  FaEdit, 
+  FaCamera, 
+  FaTrash, 
+  FaMedal, 
+  FaHeart, 
+  FaArrowLeft 
+} from 'react-icons/fa';
+import PlantProgressService from '../services/plantProgressService';
+import PlantingPlanService from '../services/plantingPlanService';
 
-import React, { useState } from "react";
-import { useAuth } from "../utils/AuthContext";
-import { CheckCircle, Circle, Plus } from "lucide-react";
-import leafIcon from "../images/progress/leaf.png";
-import badgeIcon from "../images/progress/badge.png";
-import plantIcon from "../images/progress/plant.png";
-import styled from "styled-components";
-import ShareModal from "./ShareModal"; // Adjust the path if necessary
-
-// Loader Component
-const Loader = () => {
-  return (
-    <StyledWrapper>
-      <div className="spinner">
-        <div className="spinnerin" />
-      </div>
-    </StyledWrapper>
-  );
-};
-
-const StyledWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  .spinner {
-    width: 18em;
-    height: 18em;
-    cursor: not-allowed;
-    border-radius: 50%;
-    border: 2px solid #444;
-    box-shadow: -10px -10px 10px #cddc39, 0px -10px 10px 0px #fff176,
-      10px -10px 10px #ffb74d, 10px 0 10px 4px #4caf50,
-      10px 10px 10px 0px #ff5500, 0 10px 10px 0px #ff9500,
-      -10px 10px 10px 0px #ffb700;
-    animation: rot55 2s linear infinite;
-  }
-
-  .spinnerin {
-    width: 1.5em;
-    height: 1.5em;
-    border-radius: 50%;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-1000%, -1000%);
-  }
-
-  @keyframes rot55 {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-`;
-
-const PlantProgressDetailPage = () => {
-  const { currentUser } = useAuth();
-  const [steps, setSteps] = useState([]);
-  const [progress, setProgress] = useState(0);
-  const [completed, setCompleted] = useState(false);
-  const [formInputs, setFormInputs] = useState([""]); // Initially, one input field
-  const [completedSteps, setCompletedSteps] = useState([]);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [notes, setNotes] = useState({});
-  const [allStepsCompleted, setAllStepsCompleted] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
-
-  const handleInputChange = (e, index) => {
-    const newFormInputs = [...formInputs];
-    newFormInputs[index] = e.target.value;
-    setFormInputs(newFormInputs);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const parsedSteps = formInputs
-      .map((step) => step.trim())
-      .filter((step) => step.length > 0);
-    setSteps(parsedSteps);
-    setProgress(0);
-    setCompleted(false);
-    setCompletedSteps(new Array(parsedSteps.length).fill(false));
-    setFormInputs([""]);
-    setAllStepsCompleted(false);
-  };
-
-  const toggleStepCompletion = (index) => {
-    if (!isEditMode && completedSteps[index]) return;
-    if (index > 0 && !completedSteps[index - 1] && !isEditMode) return;
-
-    const newCompletedSteps = [...completedSteps];
-    newCompletedSteps[index] = !newCompletedSteps[index];
-    setCompletedSteps(newCompletedSteps);
-
-    const completedCount = newCompletedSteps.filter((step) => step).length;
-    const newProgress = Math.round((completedCount / steps.length) * 100);
-    setProgress(newProgress);
-
-    if (newProgress === 100) {
-      setCompleted(true);
-      setAllStepsCompleted(true);
-    } else {
-      setCompleted(false);
-      setAllStepsCompleted(false);
-    }
-
-    if (isEditMode && !newCompletedSteps[index]) {
-      const newNotes = { ...notes };
-      delete newNotes[index];
-      setNotes(newNotes);
-    }
-  };
-
-  const toggleEditMode = () => setIsEditMode(!isEditMode);
-
-  const handleNoteChange = (index, event) => {
-    const newNotes = { ...notes, [index]: event.target.value };
-    setNotes(newNotes);
-  };
-
-  const cancelEdit = () => {
-    setSteps([]);
-    setProgress(0);
-    setCompleted(false);
-    setCompletedSteps([]);
-    setNotes({});
-    setFormInputs([""]);
-    setAllStepsCompleted(false);
-  };
-
-  const handleShareProgress = () => {
-    setShowShareModal(true);
-  };
-
-  const closeShareModal = () => {
-    setShowShareModal(false);
-  };
-
-  const getShareableData = () => {
-    return {
-      steps,
-      progress,
-      completed,
-      completedSteps,
-      notes,
+function PlantProgressDetailPage() {
+  const { progressId } = useParams();
+  const { currentUser, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  
+  const [progress, setProgress] = useState(null);
+  const [plantingPlan, setPlantingPlan] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Milestone completion
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState("");
+  const [milestoneNote, setMilestoneNote] = useState("");
+  const [loadingAction, setLoadingAction] = useState(false);
+  
+  // Photo upload handling (not fully implemented)
+  const [photoFiles, setPhotoFiles] = useState([]);
+  
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  
+  useEffect(() => {
+    const fetchProgressData = async () => {
+      try {
+        setLoading(true);
+        console.log("Fetching progress with ID:", progressId);
+        
+        const progressResponse = await PlantProgressService.getProgressDetail(progressId);
+        console.log("Progress data received:", progressResponse.data);
+        setProgress(progressResponse.data);
+        
+        // Fetch planting plan details
+        const planResponse = await PlantingPlanService.getPlanById(progressResponse.data.plantingPlanId);
+        console.log("Plan data received:", planResponse.data);
+        setPlantingPlan(planResponse.data);
+        
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching progress details:", err);
+        setError("Failed to load progress details. Please try again.");
+        setLoading(false);
+      }
     };
+    
+    if (progressId) {
+      fetchProgressData();
+    }
+  }, [progressId]);
+  
+  // Temporary override for testing - remove in production
+  const isOwner = true; // or: const isOwner = isAuthenticated;
+
+  // Original check - restore this after testing
+  // const isOwner = progress && currentUser && (progress.userId === currentUser._id || progress.userId === currentUser.id);
+  
+  // Get uncompleted milestones
+  const getUncompletedMilestones = () => {
+    if (!plantingPlan || !progress) return [];
+    
+    const completedIds = new Set(progress.completedMilestones.map(cm => cm.milestoneId));
+    return plantingPlan.milestones.filter(milestone => !completedIds.has(milestone.id || milestone._id));
+  };
+  
+  // Complete a milestone
+  const handleCompleteMilestone = async (e) => {
+    e.preventDefault();
+    if (!selectedMilestoneId) {
+      alert("Please select a milestone to complete");
+      return;
+    }
+    
+    try {
+      setLoadingAction(true);
+      console.log("Completing milestone:", selectedMilestoneId, "with note:", milestoneNote);
+      
+      // Format date properly for Java LocalDateTime - IMPORTANT!
+      // Java expects format: yyyy-MM-ddTHH:mm:ss
+      const now = new Date();
+      // Format without timezone information and milliseconds
+      const formattedDate = now.toISOString().split('.')[0]; 
+      
+      const milestone = {
+        milestoneId: selectedMilestoneId,
+        notes: milestoneNote,
+        completedAt: formattedDate,
+        mediaUrls: [] // Empty array for now
+      };
+      
+      console.log("Sending milestone data:", milestone);
+      
+      const response = await PlantProgressService.completeMilestone(progressId, milestone);
+      console.log("Milestone completion response:", response);
+      
+      // Refresh data
+      const updatedProgressResponse = await PlantProgressService.getProgressDetail(progressId);
+      setProgress(updatedProgressResponse.data);
+      
+      // Clear form
+      setSelectedMilestoneId("");
+      setMilestoneNote("");
+      setPhotoFiles([]);
+      
+      setLoadingAction(false);
+    } catch (err) {
+      console.error("Error completing milestone:", err);
+      console.error("Error details:", err.response?.data || "No additional error details");
+      setLoadingAction(false);
+      alert("Failed to complete milestone. Please try again.");
+    }
+  };
+  
+  // Handle liking progress
+  const handleLikeProgress = async () => {
+    try {
+      console.log("Liking progress with ID:", progressId);
+      await PlantProgressService.likeProgress(progressId);
+      
+      // Update progress with new like count
+      setProgress({
+        ...progress,
+        likes: progress.likes + 1
+      });
+    } catch (err) {
+      console.error("Error liking progress:", err);
+      alert("Failed to like this progress. Please try again.");
+    }
+  };
+  
+  // Handle deleting progress
+  const handleDeleteProgress = async () => {
+    if (deleteConfirmation !== "DELETE") {
+      alert("Please type DELETE to confirm");
+      return;
+    }
+    
+    try {
+      setLoadingAction(true);
+      console.log("Deleting progress with ID:", progressId);
+      await PlantProgressService.deleteProgress(progressId);
+      
+      setLoadingAction(false);
+      setShowModal(false);
+      
+      // Navigate back to plans page
+      navigate("/planting-plans");
+    } catch (err) {
+      console.error("Error deleting progress:", err);
+      setLoadingAction(false);
+      alert("Failed to delete progress. Please try again.");
+    }
   };
 
-  const handleAddStep = () => {
-    setFormInputs([...formInputs, ""]);
+  const startProgress = async () => {
+    try {
+      if (!currentUser || !currentUser._id) {
+        alert("You need to be logged in to track progress");
+        return;
+      }
+      
+      console.log("Starting progress for plan:", planId, "with user:", currentUser._id);
+      const response = await PlantProgressService.startProgress(planId, currentUser._id);
+      setProgress(response.data);
+      navigate(`/plant-progress/${response.data._id || response.data.id}`);
+    } catch (err) {
+      console.error("Failed to start tracking progress:", err);
+      alert("Failed to start tracking this plan. Please try again.");
+    }
   };
-
+  
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-500"></div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+          <p>{error}</p>
+          <Link to="/planting-plans" className="text-red-700 font-medium hover:underline mt-2 inline-block">
+            &larr; Back to Planting Plans
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!progress || !plantingPlan) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4">
+          <p>Plant progress not found</p>
+          <Link to="/planting-plans" className="text-yellow-700 font-medium hover:underline mt-2 inline-block">
+            &larr; Back to Planting Plans
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  
   return (
-<div className="max-w-2xl mx-auto py-4 px-4 bg-[rgba(236,255,220,0.6)] rounded-lg shadow-md mt-30 relative">
-{/* plant Image */}
-      <img
-        src={plantIcon}
-        alt="Plant"
-        className="w-88 h-98 absolute top-0 left-0 opacity-40"
-      />
-      <div className="relative z-10">
-        {currentUser && (
-          <div className="text-center text-xl font-semibold mb-4">
-            Welcome, {currentUser.username}!
-          </div>
-        )}
-
-        <h2 className="text-2xl font-semibold text-center mb-4">
-          Track Your Plant's Progress
-        </h2>
-
-        <form onSubmit={handleSubmit} className="mb-6">
-          <label className="block mb-2 text-sm font-medium text-gray-700">
-            Enter plant steps you expect:
-          </label>
-
-          {/* Render dynamic input fields */}
-          {formInputs.map((input, index) => (
-            <div key={index} className="mb-4">
-              <textarea
-                value={input}
-                onChange={(e) => handleInputChange(e, index)}
-                rows="3"
-                className="w-full px-3 py-2 bg-[#C1E1C1] border rounded-md text-gray-700"
-                placeholder={`Step ${index + 1}: Enter step description`}
-              />
-            </div>
-          ))}
-
-          <div className="flex justify-between items-center">
-            <button
-              type="button"
-              onClick={handleAddStep}
-              className="text-blue-500 hover:text-blue-600"
-            >
-              <Plus size={20} /> Add Another Step
-            </button>
-
-            <button
-              type="submit"
-              className="relative inline-flex items-center justify-center p-0.5 mb-2 mt-4 overflow-hidden text-sm font-medium text-gray-900 rounded-full group bg-gradient-to-br from-teal-300 to-lime-300 group-hover:from-teal-300 group-hover:to-lime-300 dark:text-white dark:hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-lime-200 dark:focus:ring-lime-800"
-            >
-              <span className="relative px-5 py-2.5 transition-all ease-in duration-75 bg-green dark:bg-green-900 rounded-full group-hover:bg-transparent group-hover:dark:bg-transparent">
-                Submit Steps
-              </span>
-            </button>
-          </div>
-        </form>
-
-        {/* Progress bar */}
-        <div className="bg-white p-10 rounded-lg shadow-md w-full max-w-screen-xl mx-auto">
-          <div className="relative pt-1 mb-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-semibold text-green-600">
-                Progress
-              </span>
-              <span className="text-sm font-semibold text-green-600">
-                {progress}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-5 mt-2">
-              <div
-                className="bg-green-400 h-5 rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Steps buttons */}
-          {steps.length > 0 && (
-            <div className="flex flex-wrap gap-3">
-              {steps.map((step, index) => (
-                <div key={index} className="flex flex-col items-center">
-                  <button
-                    className={`relative text-white bg-gradient-to-r from-green-400 via-blue-400 to-yellow-500 
-                              px-6 py-3 rounded-xl text-lg cursor-pointer transition-all duration-500 
-                              before:absolute before:inset-1 before:bg-gray-900 before:rounded-lg before:transition-opacity 
-                              hover:before:opacity-70 
-                              after:absolute after:inset-0 after:bg-gradient-to-r after:from-green-400 after:via-green-700 
-                              after:to-yellow-500 after:rounded-lg after:blur-lg after:opacity-0 after:transition-opacity 
-                              hover:after:opacity-100
-                              flex items-center gap-3 text-left`}
-                    onClick={() => toggleStepCompletion(index)}
-                    disabled={!isEditMode && completedSteps[index]}
+    <div className="container mx-auto px-4 py-8">
+      {/* Navigation */}
+      <nav className="mb-6">
+        <Link to="/planting-plans" className="text-green-600 hover:underline flex items-center">
+          <FaArrowLeft className="mr-1" /> Back to Planting Plans
+        </Link>
+      </nav>
+      
+      {/* Header */}
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
+        <div className="bg-green-600 p-6">
+          <h1 className="text-3xl font-bold text-white">
+            {plantingPlan.title} Progress
+          </h1>
+          <p className="text-green-100 mt-2">
+            Started on {new Date(progress.startedAt).toLocaleDateString()}
+          </p>
+        </div>
+        
+        <div className="p-6">
+          {/* Progress stats */}
+          <div className="flex flex-col md:flex-row gap-6 mb-8">
+            {/* Left column */}
+            <div className="flex-1">
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center">
+                  <FaSeedling className="mr-2 text-green-600" /> Growth Progress
+                </h2>
+                <div className="relative pt-1">
+                  <div className="flex mb-2 items-center justify-between">
+                    <div>
+                      <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-green-600 bg-green-200">
+                        {Math.round(progress.progressPercentage)}% Complete
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-semibold inline-block text-green-600">
+                        {progress.completedMilestones.length} of {plantingPlan.milestones.length} milestones
+                      </span>
+                    </div>
+                  </div>
+                  <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-green-200">
+                    <div 
+                      style={{ width: `${progress.progressPercentage}%` }}
+                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500 transition-all duration-500"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Badges */}
+              {progress.awardedBadges && progress.awardedBadges.length > 0 && (
+                <div className="mb-6">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
+                    <FaMedal className="mr-2 text-yellow-500" /> Earned Badges
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    {progress.awardedBadges.map((badge, index) => (
+                      <span 
+                        key={index}
+                        className="bg-yellow-100 text-yellow-800 text-sm px-3 py-1 rounded-full"
+                      >
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Likes */}
+              <div className="mb-6">
+                <div className="flex items-center">
+                  <button 
+                    onClick={handleLikeProgress}
+                    className="flex items-center gap-2 bg-white border border-red-300 hover:bg-red-50 text-red-600 px-4 py-2 rounded-lg transition-colors"
+                    disabled={!isAuthenticated}
                   >
-                    {/* Leaf Image */}
-                    <img
-                      src={leafIcon}
-                      alt="Leaf"
-                      className="w-6 h-6 relative z-10"
-                    />
-
-                    <span className="relative z-10">{`Stage ${
-                      index + 1
-                    }: ${step}`}</span>
-                    {completedSteps[index] ? (
-                      <CheckCircle size={24} className="relative z-10" />
+                    <FaHeart /> Like this progress
+                  </button>
+                  <span className="ml-2 text-gray-500">
+                    {progress.likes} {progress.likes === 1 ? 'like' : 'likes'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Right column - Plant info */}
+            <div className="flex-1">
+              <div className="bg-green-50 rounded-lg p-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                  Plant Information
+                </h2>
+                <ul className="space-y-3">
+                  <li className="flex items-start">
+                    <FaLeaf className="mt-1 mr-2 text-green-600" />
+                    <div>
+                      <span className="font-medium">Plant Type:</span> 
+                      <span className="ml-1">{plantingPlan.categories?.join(", ") || "Not specified"}</span>
+                    </div>
+                  </li>
+                  <li className="flex items-start">
+                    <FaCalendarAlt className="mt-1 mr-2 text-green-600" />
+                    <div>
+                      <span className="font-medium">Expected Duration:</span> 
+                      <span className="ml-1">{plantingPlan.duration || "Unknown"} days</span>
+                    </div>
+                  </li>
+                  <li className="flex items-start">
+                    <FaSeedling className="mt-1 mr-2 text-green-600" />
+                    <div>
+                      <span className="font-medium">Difficulty:</span> 
+                      <span className="ml-1">{plantingPlan.difficulty || "Medium"}</span>
+                    </div>
+                  </li>
+                </ul>
+                
+                <div className="mt-6">
+                  <Link 
+                    to={`/planting-plans/${plantingPlan._id || plantingPlan.id}`}
+                    className="text-green-600 hover:underline flex items-center"
+                  >
+                    View full planting plan
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Completed Milestones */}
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            Completed Milestones
+          </h2>
+          
+          {progress.completedMilestones.length > 0 ? (
+            <div className="space-y-4 mb-8">
+              {progress.completedMilestones.map((milestone, index) => {
+                const milestoneDetails = plantingPlan.milestones.find(
+                  m => (m._id || m.id) === milestone.milestoneId
+                );
+                
+                return (
+                  <div
+                    key={milestone.milestoneId || index}
+                    className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500"
+                  >
+                    <div className="flex justify-between items-start">
+                      <h3 className="text-lg font-medium text-gray-800">
+                        {index + 1}. {milestoneDetails?.title || "Unknown milestone"}
+                      </h3>
+                      <span className="text-sm text-gray-500">
+                        {new Date(milestone.completedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    
+                    {milestoneDetails && (
+                      <p className="text-gray-700 mt-1">
+                        {milestoneDetails.description}
+                      </p>
+                    )}
+                    
+                    {milestone.notes && (
+                      <div className="bg-white p-3 rounded mt-2 italic text-gray-600">
+                        "{milestone.notes}"
+                      </div>
+                    )}
+                    
+                    {milestone.mediaUrls && milestone.mediaUrls.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-sm font-medium text-gray-700">Photos:</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {milestone.mediaUrls.map((url, i) => (
+                            <img 
+                              key={i} 
+                              src={url} 
+                              alt={`Milestone ${index + 1} photo ${i + 1}`}
+                              className="h-20 w-20 object-cover rounded"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-gray-500 italic mb-8">
+              No milestones completed yet. Start by completing your first milestone!
+            </p>
+          )}
+          
+          {/* Complete Milestone Form */}
+          {isOwner && getUncompletedMilestones().length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-8">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                <FaClipboardCheck className="mr-2 text-green-600" /> Complete a Milestone
+              </h2>
+              
+              <form onSubmit={handleCompleteMilestone}>
+                <div className="mb-4">
+                  <label className="block text-gray-700 font-medium mb-2">
+                    Select Milestone
+                  </label>
+                  <select
+                    value={selectedMilestoneId}
+                    onChange={(e) => setSelectedMilestoneId(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    required
+                  >
+                    <option value="">-- Select a milestone --</option>
+                    {getUncompletedMilestones().map((milestone) => (
+                      <option key={milestone._id || milestone.id} value={milestone._id || milestone.id}>
+                        {milestone.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block text-gray-700 font-medium mb-2">
+                    Your Notes (optional)
+                  </label>
+                  <textarea
+                    value={milestoneNote}
+                    onChange={(e) => setMilestoneNote(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    rows="3"
+                    placeholder="Share your experience with this milestone..."
+                  ></textarea>
+                </div>
+                
+                <div className="mb-6">
+                  <label className="block text-gray-700 font-medium mb-2">
+                    Add Photos (optional)
+                  </label>
+                  <div className="flex items-center">
+                    <label className="cursor-pointer bg-white px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+                      <FaCamera className="inline-block mr-2" />
+                      Select Images
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => setPhotoFiles(Array.from(e.target.files))}
+                      />
+                    </label>
+                    {photoFiles.length > 0 && (
+                      <span className="ml-3 text-sm text-gray-500">
+                        {photoFiles.length} {photoFiles.length === 1 ? 'file' : 'files'} selected
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Note: Image upload is not fully implemented in this version
+                  </p>
+                </div>
+                
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+                    disabled={loadingAction}
+                  >
+                    {loadingAction ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Completing...
+                      </span>
                     ) : (
-                      <Circle size={24} className="relative z-10" />
+                      'Complete Milestone'
                     )}
                   </button>
-
-                  {/* Plus icon to add notes */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newNotes = { ...notes };
-                      if (!newNotes[index]) newNotes[index] = "";
-                      setNotes(newNotes);
-                    }}
-                    className="mt-2 text-green-500 hover:text-green-600"
-                  >
-                    <Plus size={20} />
-                  </button>
-
-                  {/* Notes input field */}
-                  {notes[index] !== undefined && (
-                    <div className="relative w-[200px] h-[250px] flex flex-col items-center justify-center rounded-xl shadow-2xl overflow-hidden">
-                      <div className="absolute top-[5px] left-[5px] w-[190px] h-[240px] bg-white/95 backdrop-blur-xl rounded-lg outline-2 outline-white z-10"></div>
-                      <div className="absolute top-1/2 left-1/2 w-[150px] h-[150px] bg-green-500 opacity-80 blur-lg rounded-full animate-[blobBounce_5s_infinite_ease] z-0"></div>
-                      <textarea
-                        value={notes[index]}
-                        onChange={(e) => handleNoteChange(index, e)}
-                        rows="3"
-                        className="relative z-20 mt-2 w-[180px] px-3 py-2 border rounded-md text-gray-700 bg-transparent outline-none placeholder-gray-500 shadow-md"
-                        placeholder="Add your notes here..."
-                      />
-                    </div>
-                  )}
                 </div>
-              ))}
+              </form>
+            </div>
+          )}
+          
+          {/* Edit/Delete Progress Buttons (for owner only) */}
+          {isOwner && (
+            <div className="mt-8 border-t border-gray-200 pt-6 flex gap-4">
+              <button
+                type="button"
+                onClick={() => navigate(`/plant-progress/${progressId}/edit`)}
+                className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+              >
+                <FaEdit className="mr-2" /> Edit Progress
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowModal(true)}
+                className="px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center"
+              >
+                <FaTrash className="mr-2" /> Delete Progress
+              </button>
             </div>
           )}
         </div>
-
-        {completed && (
-          <div className="mt-4 text-center text-xl font-bold text-green-600">
-            Congratulations! Your plant is fully grown! 🌱🎉
-          </div>
-        )}
-
-        {allStepsCompleted && (
-          <div className="mt-4 text-center relative">
-            <Loader />
-            <img
-              src={badgeIcon}
-              alt="Badge"
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 w-36 h-56"
-            />
-          </div>
-        )}
-
-        {/* Edit, Cancel, Share Buttons */}
-        <div className="flex justify-center gap-4 mt-6">
-          <button
-            onClick={toggleEditMode}
-            className="text-gray-900 bg-gradient-to-r from-teal-200 to-lime-200 hover:bg-gradient-to-l hover:from-teal-200 hover:to-lime-200 focus:ring-4 focus:outline-none focus:ring-lime-200 dark:focus:ring-teal-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
-          >
-            {isEditMode ? "Save Changes" : "Edit Progress"}
-          </button>
-          <button
-            onClick={cancelEdit}
-            className="text-gray-900 bg-gradient-to-r from-teal-200 to-lime-200 hover:bg-gradient-to-l hover:from-teal-200 hover:to-lime-200 focus:ring-4 focus:outline-none focus:ring-lime-200 dark:focus:ring-teal-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleShareProgress}
-            className="text-gray-900 bg-gradient-to-r from-teal-200 to-lime-200 hover:bg-gradient-to-l hover:from-teal-200 hover:to-lime-200 focus:ring-4 focus:outline-none focus:ring-lime-200 dark:focus:ring-teal-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
-          >
-            Share Progress
-          </button>
-        </div>
-
-        {/* Share Progress Modal */}
-        {showShareModal && (
-          <ShareModal
-            progress={progress}
-            steps={steps}
-            completedSteps={completedSteps}
-            notes={notes}
-            closeModal={closeShareModal}
-          />
-        )}
       </div>
+      
+      {/* Delete confirmation modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-lg w-full">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Delete Progress</h3>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete this progress? This action cannot be undone.
+              All your milestone completions and records will be lost.
+            </p>
+            
+            <div className="mb-4">
+              <label className="block text-gray-700 font-medium mb-2">
+                Type "DELETE" to confirm
+              </label>
+              <input
+                type="text"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex justify-end gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowModal(false);
+                  setDeleteConfirmation("");
+                }}
+                className="px-6 py-2 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteProgress}
+                className="px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+                disabled={deleteConfirmation !== "DELETE" || loadingAction}
+              >
+                {loadingAction ? "Deleting..." : "Delete Progress"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
+}
 
 export default PlantProgressDetailPage;
