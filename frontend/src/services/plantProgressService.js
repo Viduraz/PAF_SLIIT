@@ -8,6 +8,9 @@ const PlantProgressService = {
 
   // Get single progress detail by ID
   getProgressDetail: (progressId) => {
+    if (!progressId) {
+      throw new Error("progressId is required to fetch progress details.");
+    }
     return api.get(`/progress/${progressId}`);
   },
 
@@ -58,10 +61,14 @@ const PlantProgressService = {
 
   // Start progress for a plan
   startProgress: (planId) => {
+    if (!planId) {
+      throw new Error("planId is required to start progress.");
+    }
     return api.post("/progress", {
-      plantingPlan: planId,
+      plantingPlanId: planId,
       progressPercentage: 0,
-      completedMilestones: []
+      completedMilestones: [],
+      startedAt: new Date().toISOString()
     });
   }
 };
