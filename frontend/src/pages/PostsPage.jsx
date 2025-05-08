@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import PostService from "../services/postService";
+import CommentService from "../services/commentService";
 import { Modal, Button, Form, Spinner } from "react-bootstrap";
 
 function PostsPage() {
@@ -608,6 +609,7 @@ function PostsPage() {
           </Button>
         </Modal.Footer>
       </Modal>
+    </div>
     </div>
   );
 }
