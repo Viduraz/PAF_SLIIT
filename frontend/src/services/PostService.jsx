@@ -48,6 +48,15 @@ const PostService = {
       });
   },
 
+  // Create a new post with an image
+  createPostWithImage: (formData) => {
+    return api.post("/posts/with-image", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+
   // Update a post
   updatePost: (postId, postData) => {
     return api.put(`/posts/${postId}`, postData);
@@ -79,6 +88,17 @@ const PostService = {
   deleteComment: (postId, commentId) => {
     // Use the comments endpoint directly
     return api.delete(`/comments/${commentId}`);
+  },
+
+  // Get post data for editing
+  getPostForEdit: (postId) => {
+    return api.get(`/posts/${postId}/edit`).catch(error => {
+      // Fallback to regular get if edit endpoint doesn't exist
+      if (error.response && error.response.status === 404) {
+        return api.get(`/posts/${postId}`);
+      }
+      throw error;
+    });
   },
 
   // Search posts by keyword

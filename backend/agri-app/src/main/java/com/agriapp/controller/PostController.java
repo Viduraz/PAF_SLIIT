@@ -5,18 +5,23 @@ import com.agriapp.service.PostService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import com.agriapp.service.CloudinaryService;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/posts")
 @CrossOrigin(origins = "*")
 public class PostController {
-
     private final PostService postService;
+    private final CloudinaryService cloudinaryService;
 
-    public PostController(PostService postService) {
+    public PostController(PostService postService, CloudinaryService cloudinaryService) {
         this.postService = postService;
+        this.cloudinaryService = cloudinaryService;
     }
 
     @PostMapping
@@ -83,5 +88,41 @@ public class PostController {
     public ResponseEntity<Void> sharePost(@PathVariable String id) {
         postService.sharePost(id);
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @PostMapping("/with-image")
+    public ResponseEntity<?> createPostWithImage(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("title") String title,
+            @RequestParam("content") String content,
+            @RequestParam("userId") String userId,
+            @RequestParam(value = "tags", required = false) String tagsString) {
+        
+        try {
+            // Upload image to Cloudinary
+            Map uploadResult = cloudinaryService.uploadImage(file);
+            
+            // Create post
+            Post post = new Post();
+            post.setTitle(title);
+            post.setContent(content);
+            post.setUserId(userId);
+            
+            // Set image URL and public ID from Cloudinary
+            post.setImageUrl((String) uploadResult.get("secure_url"));
+            post.setImagePublicId((String) uploadResult.get("public_id"));
+            
+            // Process tags if provided
+            if (tagsString != null && !tagsString.isEmpty()) {
+                List<String> tags = Arrays.asList(tagsString.split(","));
+                post.setTags(tags);
+            }
+            
+            Post savedPost = postService.createPost(post);
+            return new ResponseEntity<>(savedPost, HttpStatus.CREATED);
+        } catch (Exception e) {
+            return new ResponseEntity<>("Failed to create post: " + e.getMessage(), 
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }
