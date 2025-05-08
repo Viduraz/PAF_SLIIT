@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import PostService from "../services/postService";
-import CommentService from "../services/commentService";
+import { Modal, Button, Form, Spinner } from "react-bootstrap";
 
 function PostsPage() {
   const navigate = useNavigate();
@@ -12,9 +12,17 @@ function PostsPage() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("latest");
   const [searchTerm, setSearchTerm] = useState("");
-  const [commentTexts, setCommentTexts] = useState({});
-  const [editingCommentId, setEditingCommentId] = useState(null);
-  const [editingText, setEditingText] = useState("");
+  
+  // Add these states for the edit popup
+  const [showEditPopup, setShowEditPopup] = useState(false);
+  const [editingPost, setEditingPost] = useState(null);
+  const [updatingPost, setUpdatingPost] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    _id:"",
+    title: "",
+    content: "",
+    tags: ""
+  });
 
   useEffect(() => {
     fetchPosts();
@@ -114,211 +122,143 @@ function PostsPage() {
     }
   };
 
-  const handleAddComment = async (postId) => {
-    if (!isAuthenticated) {
-      alert("You need to login to add a comment");
-      return;
-    }
+  const handleEditClick = (post) => {
+    console.log("Editing post:", post);
+    setEditingPost(post);
+    setEditFormData({
+      _id: post._id || "",
+      title: post.title || "",
+      content: post.content || "",
+      tags: Array.isArray(post.tags) ? post.tags.join(", ") : ""
+    });
+    setShowEditPopup(true);
+  };
 
-    const commentText = commentTexts[postId] || "";
-    if (!commentText.trim()) {
-      alert("Comment cannot be empty");
-      return;
-    }
+  const handleCloseEditPopup = () => {
+    setShowEditPopup(false);
+    setEditingPost(null);
+    setEditFormData({ title: "", content: "", tags: "" });
+  };
 
-    // Validate postId
-    if (!postId || postId === "undefined") {
-      console.error("Invalid post ID:", postId);
-      alert("Failed to add comment: Invalid post ID");
-      return;
-    }
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleUpdatePost = async (e) => {
+    e.preventDefault();
+    if (!editingPost) return;
 
     try {
-      console.log("Adding comment to post ID:", postId);
+      setUpdatingPost(true);
+      setError(""); // Clear any previous errors
       
-      // Create comment data with userId explicitly set
-      const commentData = {
-        content: commentText,
-        userId: currentUser._id || currentUser.id,  // Make sure userId is set
+      // Convert tags string to array
+      const tagsArray = editFormData.tags
+        .split(",")
+        .map(tag => tag.trim())
+        .filter(tag => tag !== "");
+      
+      const postData = {
+        ...editFormData,
+        tags: tagsArray
       };
       
-      console.log("Comment data:", commentData);
-      const newComment = await CommentService.addComment(postId, commentData);
+      console.log("editingPost:", editingPost);
+      console.log("Updating post with data:", postData);
+      console.log("Post ID:", editingPost.id);
       
-      console.log("New comment response:", newComment);
+      // Make sure we're passing a valid ID to the update function
+      if (!editingPost.id) {
+        throw new Error("Invalid post ID for update");
+      }
       
-      // Enhance the returned comment with author info for UI display
-      const commentWithAuthor = {
-        ...newComment.data,
-        userId: currentUser._id || currentUser.id,
-        author: {
-          _id: currentUser._id || currentUser.id,
-          username: currentUser.username || currentUser.name || "You"
-        }
-      };
+      const response = await PostService.updatePost(editingPost.id, postData);
+      console.log("Update response:", response);
       
-      // Append the new comment to the comments array
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post._id === postId
-            ? {
-                ...post,
-                comments: [...(post.comments || []), commentWithAuthor],
-              }
-            : post
-        )
+      // Update the post in the local state - handle different API response formats
+      setPosts(prev => 
+        prev.map(post => {
+          if (post.id === editingPost.id) {
+            // Create a merged object with updated data
+            const updatedPost = {
+              ...post,
+              ...response.data,
+              // Ensure these fields are preserved properly
+              _id: post._id, // Keep the original ID to ensure consistency
+              author: post.author, // Preserve author information
+              createdAt: post.createdAt, // Preserve creation date
+              tags: tagsArray, // Use our formatted tags
+            };
+            return updatedPost;
+          }
+          return post;
+        })
       );
-
-      // Clear the comment input field
-      setCommentTexts((prev) => ({ ...prev, [postId]: "" }));
+      
+      // Show success message
+      setError("Post updated successfully"); // Using the error state for success message
+      setTimeout(() => setError(""), 3000); // Clear after 3 seconds
+      
+      // Close the popup
+      handleCloseEditPopup();
+      
     } catch (err) {
-      console.error("Failed to add comment:", err);
-      alert("Failed to add comment. Please try again.");
+      console.error("Failed to update post:", err);
+      
+      // More detailed error message
+      if (err.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        setError(`Failed to update post: ${err.response.data.message || err.response.statusText || 'Server error'}`);
+        console.error("Response data:", err.response.data);
+        console.error("Response status:", err.response.status);
+      } else if (err.request) {
+        // The request was made but no response was received
+        setError("Failed to update post: No response from server. Check your network connection.");
+        console.error("Request:", err.request);
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        setError(`Failed to update post: ${err.message}`);
+      }
+    } finally {
+      setUpdatingPost(false);
     }
   };
 
-  const handleEditComment = async (commentId, postId) => {
-    if (!isAuthenticated) {
-      alert("You need to login to edit a comment");
+  const handleDeletePost = async (postId, e) => {
+    // Stop event propagation to prevent navigating to post details
+    e.stopPropagation();
+    
+    // Confirm deletion with the user
+    if (!window.confirm("Are you sure you want to delete this post? This action cannot be undone.")) {
       return;
     }
     
-    if (!editingText.trim()) {
-      alert("Comment cannot be empty");
-      return;
-    }
-
-    try {
-      console.log("Updating comment:", commentId, "with text:", editingText);
-      const updatedComment = await CommentService.updateComment(commentId, {
-        content: editingText
-      });
-      
-      console.log("Comment updated:", updatedComment);
-      
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post._id === postId
-            ? {
-                ...post,
-                comments: post.comments.map((comment) =>
-                  comment._id === commentId ? {
-                    ...comment,
-                    content: editingText,
-                    updatedAt: new Date().toISOString()
-                  } : comment
-                ),
-              }
-            : post
-        )
-      );
-      setEditingCommentId(null);
-      setEditingText("");
-      
-    } catch (err) {
-      console.error("Failed to edit comment:", err);
-      alert("Failed to update comment. Please try again.");
-    }
-  };
-
-  const handleDeleteComment = async (commentId, postId) => {
-    if (!isAuthenticated) {
-      alert("You need to login to delete a comment");
-      return;
-    }
-
-    if (!commentId) {
-      console.error("Cannot delete comment: Comment ID is undefined");
-      alert("Error: Unable to identify the comment to delete");
-      return;
-    }
-
-    if (!confirm("Are you sure you want to delete this comment?")) {
-      return;
-    }
-
-    try {
-      console.log("Deleting comment with ID:", commentId, "from post:", postId);
-      
-      // Find the comment first to log its details
-      const commentToDelete = posts
-        .find(p => p._id === postId)?.comments
-        .find(c => c._id === commentId);
-        
-      console.log("Comment to delete:", commentToDelete);
-      
-      const response = await CommentService.deleteComment(commentId);
-      console.log("Delete comment response:", response);
-      
-      // First update local state for immediate UI feedback
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post._id === postId
-            ? {
-                ...post,
-                comments: post.comments.filter((comment) => comment._id !== commentId),
-              }
-            : post
-        )
-      );
-      
-      // Then refresh data from server to ensure all clients have the same data
-      console.log("Comment deleted, refreshing posts from server...");
-      await fetchPosts(); // Fetch fresh data from the server
-      
-    } catch (err) {
-      console.error("Failed to delete comment:", err);
-      alert("Failed to delete comment. Please try again.");
-    }
-  };
-
-  const handleCommentTextChange = (postId, text) => {
-    setCommentTexts((prev) => ({ ...prev, [postId]: text }));
-  };
-
-  const handleDeletePost = async (postId) => {
-    if (!isAuthenticated) {
-      alert("You need to login to delete a post");
-      return;
-    }
-
-    if (!confirm("Are you sure you want to delete this post? This action cannot be undone.")) {
-      return;
-    }
-
     try {
       await PostService.deletePost(postId);
-      setPosts(posts.filter(post => post._id !== postId));
-      alert("Post deleted successfully");
+      
+      // Remove the deleted post from state
+      setPosts(posts.filter(post => post.id !== postId));
+      
+      // Show success message
+      setError("Post deleted successfully");
+      setTimeout(() => setError(""), 3000);
     } catch (err) {
+      console.log("Error deleting post:", err);
       console.error("Failed to delete post:", err);
-      alert("Failed to delete post. Please try again.");
+      
+      if (err.response) {
+        setError(`Failed to delete post: ${err.response.data.message || err.response.statusText || 'Server error'}`);
+      } else if (err.request) {
+        setError("Failed to delete post: No response from server. Check your network connection.");
+      } else {
+        setError(`Failed to delete post: ${err.message}`);
+      }
     }
-  };
-
-  const handleEditPost = (postId) => {
-    navigate(`/posts/${postId}/edit`);
-  };
-
-  const isCommentAuthor = (comment) => {
-    if (!isAuthenticated || !currentUser || !comment) {
-      return false;
-    }
-    
-    const currentUserId = currentUser._id || currentUser.id;
-    
-    // Check if we have an author object
-    if (comment.author) {
-      const authorId = comment.author._id || comment.author.id;
-      if (currentUserId === authorId) return true;
-    }
-    
-    // If we don't have an author object, check userId directly
-    if (comment.userId) {
-      return currentUserId === comment.userId;
-    }
-    
-    return false;
   };
 
   if (loading && posts.length === 0) {
@@ -431,28 +371,23 @@ function PostsPage() {
           </div>
         )}
 
-        {/* Posts Grid */}
-        {posts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {posts.map((post, index) => (
-              <div key={post._id || `post-${index}`} className="bg-white rounded-xl shadow-md overflow-hidden transition-transform duration-300 hover:shadow-lg hover:-translate-y-1">
-                {/* Post Image */}
-                {post.image && (
-                  <div className="relative h-48 w-full overflow-hidden">
-                    <img 
-                      src={post.image} 
-                      alt={post.title} 
-                      className="w-full h-full object-cover" 
-                    />
-                  </div>
+      {posts.length > 0 ? (
+        <div className="row">
+          {posts.map((post, index) => (
+            <div className="col-md-6 mb-4" key={post._id || `post-${index}`}>
+              <div className="card h-100">
+                {post.imageUrl && (
+                  <img 
+                    src={post.imageUrl} 
+                    alt={post.title} 
+                    className="card-img-top" 
+                    style={{ height: "200px", objectFit: "cover" }} 
+                  />
                 )}
-                
-                {/* Post Content */}
-                <div className="p-5">
-                  {/* Author Info */}
-                  <div className="flex items-center mb-4">
-                    {post.author && post.author.username ? (
-                      <Link to={`/profile/${post.author._id || post.author.id}`} className="flex items-center group">
+                <div className="card-body">
+                  <div className="d-flex align-items-center mb-3">
+                    {post.author ? (
+                      <Link to={`/profile/${post.author._id}`} className="text-decoration-none">
                         {post.author.profileImage ? (
                           <img 
                             src={post.author.profileImage} 
@@ -485,16 +420,11 @@ function PostsPage() {
                           </svg>
                         </div>
                         <div>
-                          <p className="font-medium text-gray-800">
-                            {post.userId ? `User-${post.userId.substring(0, 5)}...` : "Unknown User"}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(post.createdAt).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </p>
+                          <span className="fw-bold">unknwon</span>
+                          <br />
+                          <small className="text-muted">
+                            {new Date(post.createdAt).toLocaleDateString()}
+                          </small>
                         </div>
                       </div>
                     )}
@@ -553,12 +483,10 @@ function PostsPage() {
                   <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
                     <div className="flex items-center gap-3">
                       <button 
-                        className={`flex items-center ${
-                          isAuthenticated && post.likes && Array.isArray(post.likes) && post.likes.includes(currentUser?._id)
-                            ? "text-red-500" 
-                            : "text-gray-500 hover:text-red-500"
-                        } transition-colors`}
-                        onClick={() => likePost(post._id)}
+                        className={`btn btn-sm ${isAuthenticated && post.likes && Array.isArray(post.likes) && post.likes.includes(currentUser?._id) 
+                          ? "btn-danger" 
+                          : "btn-outline-danger"}`}
+                        onClick={() => likePost(post.id)}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill={
                           isAuthenticated && post.likes && Array.isArray(post.likes) && post.likes.includes(currentUser?._id)
@@ -570,165 +498,116 @@ function PostsPage() {
                         {Array.isArray(post.likes) ? post.likes.length : 0}
                       </button>
                       
-                      <Link to={`/posts/${post._id}`} className="flex items-center text-gray-500 hover:text-emerald-500 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
+                      <Link to={`/posts/${post.id}`} className="btn btn-sm btn-outline-primary ms-2">
+                        <i className="bi bi-chat-fill me-1"></i>
                         {post.comments?.length || 0}
                       </Link>
+                      
+                      {/* Add Edit button - only show for posts authored by current user */}
+                      {/* {isAuthenticated && post.author && post.author._id === currentUser?._id && ( */}
+                        <button 
+                          className="btn btn-sm btn-outline-secondary ms-2"
+                          onClick={() => handleEditClick(post)}
+                        >
+                          <i className="bi bi-pencil-fill me-1"></i>
+                          Edit
+                        </button>
+                      {/* )} */}
+
+                      {/* Add Delete button - only show for posts authored by current user */}
+                      {/* {isAuthenticated && post.author && post.author._id === currentUser?._id && ( */}
+                        <button 
+                          className="btn btn-sm btn-outline-danger ms-2"
+                          onClick={(e) => handleDeletePost(post.id, e)}
+                        >
+                          <i className="bi bi-trash-fill me-1"></i>
+                          Delete
+                        </button>
+                      {/* )} */}
                     </div>
                     
-                    <Link 
-                      to={`/posts/${post._id}`} 
-                      className="text-sm text-emerald-600 hover:text-emerald-700 hover:underline transition-colors font-medium"
-                    >
-                      Read More →
+                    <Link to={`/posts/${post.id}`} className="btn btn-sm btn-link">
+                      Read More
                     </Link>
-                  </div>
-
-                  {/* Comments Section */}
-                  <div className="mt-5 pt-4 border-t border-gray-100">
-                    <h3 className="text-sm font-semibold text-gray-700 flex items-center mb-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                      </svg>
-                      Comments
-                    </h3>
-                    
-                    {post.comments && post.comments.length > 0 ? (
-                      <div className="space-y-3 max-h-60 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-emerald-200 scrollbar-track-transparent">
-                        {post.comments.map((comment) => {
-                          const commentId = comment._id || comment.id;
-                          if (!commentId) {
-                            console.warn("Comment without ID:", comment);
-                          }
-                          return (
-                            <div key={commentId || `temp-${Date.now()}`} className="bg-gray-50 rounded-lg p-3">
-                              <div className="flex justify-between items-start">
-                                <span className="text-sm font-medium text-gray-700">
-                                  {comment.author?.username || 
-                                   (comment.userId && comment.userId === (currentUser?._id || currentUser?.id) ? 
-                                     "You" : "Anonymous")}
-                                </span>
-                                {isCommentAuthor(comment) && (
-                                  <div className="flex items-center space-x-1">
-                                    <button
-                                      className="text-gray-400 hover:text-blue-500"
-                                      onClick={() => {
-                                        setEditingCommentId(commentId);
-                                        setEditingText(comment.content);
-                                      }}
-                                    >
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                      </svg>
-                                    </button>
-                                    <button
-                                      className="text-gray-400 hover:text-red-500"
-                                      onClick={() => handleDeleteComment(commentId, post._id)}
-                                    >
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                      </svg>
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                              
-                              {editingCommentId === commentId ? (
-                                <div className="mt-2">
-                                  <input
-                                    type="text"
-                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    value={editingText}
-                                    onChange={(e) => setEditingText(e.target.value)}
-                                  />
-                                  <div className="mt-2 flex space-x-2">
-                                    <button
-                                      className="px-3 py-1 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors"
-                                      onClick={() => handleEditComment(commentId, post._id)}
-                                    >
-                                      Save
-                                    </button>
-                                    <button
-                                      className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
-                                      onClick={() => {
-                                        setEditingCommentId(null);
-                                        setEditingText("");
-                                      }}
-                                    >
-                                      Cancel
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className="text-sm text-gray-600 mt-1">{comment.content}</p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-500 italic">No comments yet</p>
-                    )}
-                    
-                    {/* Add Comment Section */}
-                    {isAuthenticated && (
-                      <div className="mt-3">
-                        {post._id ? (
-                          <div className="mt-2 flex">
-                            <input
-                              type="text"
-                              className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                              placeholder="Add a comment..."
-                              value={commentTexts[post._id] || ""}
-                              onChange={(e) => handleCommentTextChange(post._id, e.target.value)}
-                            />
-                            <button
-                              className="px-3 py-2 bg-emerald-600 text-white rounded-r-md hover:bg-emerald-700 transition-colors"
-                              onClick={() => handleAddComment(post._id)}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                              </svg>
-                            </button>
-                          </div>
-                        ) : (
-                          <p className="text-red-500 text-sm">Error: Post ID is missing</p>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl p-10 shadow-md text-center">
-            <div className="w-20 h-20 mx-auto mb-4 bg-emerald-100 rounded-full flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-              </svg>
             </div>
-            <p className="text-xl text-gray-600 mb-4">
-              {filter === "following" && isAuthenticated 
-                ? "No posts from people you follow. Start following more users to see their posts here!"
-                : "No posts found. Be the first to share your knowledge!"}
-            </p>
-            {isAuthenticated && (
-              <Link 
-                to="/posts/new" 
-                className="inline-flex items-center px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow transition duration-200"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Create New Post
-              </Link>
-            )}
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-5">
+          <p className="lead text-muted">
+            {filter === "following" && isAuthenticated 
+              ? "No posts from people you follow. Start following more users to see their posts here!"
+              : "No posts found. Be the first to share your knowledge!"}
+          </p>
+          {isAuthenticated && (
+            <Link to="/posts/new" className="btn btn-primary mt-3">
+              Create New Post
+            </Link>
+          )}
+        </div>
+      )}
+
+      {/* Add the Edit Post Modal */}
+      <Modal show={showEditPopup} onHide={handleCloseEditPopup} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Edit Post</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleUpdatePost}>
+            <Form.Group className="mb-3">
+              <Form.Label>Title</Form.Label>
+              <Form.Control
+                type="text"
+                name="title"
+                value={editFormData.title}
+                onChange={handleEditFormChange}
+                required
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Content</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={4}
+                name="content"
+                value={editFormData.content}
+                onChange={handleEditFormChange}
+                required
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Tags (comma separated)</Form.Label>
+              <Form.Control
+                type="text"
+                name="tags"
+                value={editFormData.tags}
+                onChange={handleEditFormChange}
+                placeholder="technology, programming, react"
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseEditPopup} disabled={updatingPost}>
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleUpdatePost} 
+            disabled={updatingPost}
+          >
+            {updatingPost ? (
+              <>
+                <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                <span className="ms-2">Updating...</span>
+              </>
+            ) : 'Update Post'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

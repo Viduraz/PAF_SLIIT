@@ -13,6 +13,10 @@ public class Post {
     private String userId;
     private String title;
     private String content;
+    // Add fields for Cloudinary images
+    private String imageUrl;
+    private String imagePublicId;
+    // Keep the existing fields
     private List<String> mediaUrls = new ArrayList<>();
     private List<String> tags = new ArrayList<>();
     private LocalDateTime createdAt;
@@ -58,6 +62,22 @@ public class Post {
     
     public void setContent(String content) {
         this.content = content;
+    }
+    
+    public String getImageUrl() {
+        return imageUrl;
+    }
+    
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+    
+    public String getImagePublicId() {
+        return imagePublicId;
+    }
+    
+    public void setImagePublicId(String imagePublicId) {
+        this.imagePublicId = imagePublicId;
     }
     
     public List<String> getMediaUrls() {
