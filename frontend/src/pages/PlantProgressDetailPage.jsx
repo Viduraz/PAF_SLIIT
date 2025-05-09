@@ -277,7 +277,7 @@ const PlantProgressDetailPage = () => {
                   {/* Notes input field */}
                   {notes[index] !== undefined && (
                     <div className="relative w-[200px] h-[250px] flex flex-col items-center justify-center rounded-xl shadow-2xl overflow-hidden">
-                      <div className="absolute top-[5px] left-[5px] w-[190px] h-[240px] bg-white/95 backdrop-blur-xl rounded-lg outline outline-2 outline-white z-10"></div>
+                      <div className="absolute top-[5px] left-[5px] w-[190px] h-[240px] bg-white/95 backdrop-blur-xl rounded-lg outline-2 outline-white z-10"></div>
                       <div className="absolute top-1/2 left-1/2 w-[150px] h-[150px] bg-green-500 opacity-80 blur-lg rounded-full animate-[blobBounce_5s_infinite_ease] z-0"></div>
                       <textarea
                         value={notes[index]}
