@@ -34,8 +34,8 @@ const PlantProgressService = {
       milestone.completedAt = milestone.completedAt.replace('Z', '');
     }
     
-    // Try with PUT instead of POST
-    return api.put(`/progress/${progressId}/milestones`, milestone);
+    // Change from PUT to POST
+    return api.post(`/progress/${progressId}/milestones`, milestone);
   },
 
   // Update the entire progress object

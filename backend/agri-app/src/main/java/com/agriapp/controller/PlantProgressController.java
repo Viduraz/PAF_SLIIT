@@ -94,6 +94,11 @@ public class PlantProgressController {
         }
     }
 
+    @PostMapping("/{id}/milestones")
+    public ResponseEntity<?> addCompletedMilestone(@PathVariable String id, @RequestBody PlantProgress.CompletedMilestone milestone) {
+        return completeMilestone(id, milestone);
+    }
+
     @PutMapping("/{id}/percentage")
     public ResponseEntity<Void> updateProgressPercentage(@PathVariable String id) {
         plantProgressService.updateProgressPercentage(id);
