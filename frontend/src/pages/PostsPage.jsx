@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import PostService from "../services/postService";
-import { Modal, Button, Form, Spinner } from "react-bootstrap";
+import CommentService from "../services/commentService";
 
 function PostsPage() {
   const navigate = useNavigate();
@@ -12,13 +12,13 @@ function PostsPage() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("latest");
   const [searchTerm, setSearchTerm] = useState("");
-  
-  // Add these states for the edit popup
+
+  // Modal state
   const [showEditPopup, setShowEditPopup] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [updatingPost, setUpdatingPost] = useState(false);
   const [editFormData, setEditFormData] = useState({
-    _id:"",
+    _id: "",
     title: "",
     content: "",
     tags: ""
@@ -110,7 +110,7 @@ function PostsPage() {
           const alreadyLiked = currentLikes.includes(currentUser._id);
           return {
             ...post,
-            likes: alreadyLiked 
+            likes: alreadyLiked
               ? currentLikes.filter(id => id !== currentUser._id)
               : [...currentLikes, currentUser._id]
           };
@@ -155,32 +155,32 @@ function PostsPage() {
     try {
       setUpdatingPost(true);
       setError(""); // Clear any previous errors
-      
+
       // Convert tags string to array
       const tagsArray = editFormData.tags
         .split(",")
         .map(tag => tag.trim())
         .filter(tag => tag !== "");
-      
+
       const postData = {
         ...editFormData,
         tags: tagsArray
       };
-      
+
       console.log("editingPost:", editingPost);
       console.log("Updating post with data:", postData);
       console.log("Post ID:", editingPost.id);
-      
+
       // Make sure we're passing a valid ID to the update function
       if (!editingPost.id) {
         throw new Error("Invalid post ID for update");
       }
-      
+
       const response = await PostService.updatePost(editingPost.id, postData);
       console.log("Update response:", response);
-      
+
       // Update the post in the local state - handle different API response formats
-      setPosts(prev => 
+      setPosts(prev =>
         prev.map(post => {
           if (post.id === editingPost.id) {
             // Create a merged object with updated data
@@ -198,17 +198,17 @@ function PostsPage() {
           return post;
         })
       );
-      
+
       // Show success message
       setError("Post updated successfully"); // Using the error state for success message
       setTimeout(() => setError(""), 3000); // Clear after 3 seconds
-      
+
       // Close the popup
       handleCloseEditPopup();
-      
+
     } catch (err) {
       console.error("Failed to update post:", err);
-      
+
       // More detailed error message
       if (err.response) {
         // The request was made and the server responded with a status code
@@ -232,25 +232,25 @@ function PostsPage() {
   const handleDeletePost = async (postId, e) => {
     // Stop event propagation to prevent navigating to post details
     e.stopPropagation();
-    
+
     // Confirm deletion with the user
     if (!window.confirm("Are you sure you want to delete this post? This action cannot be undone.")) {
       return;
     }
-    
+
     try {
       await PostService.deletePost(postId);
-      
+
       // Remove the deleted post from state
       setPosts(posts.filter(post => post.id !== postId));
-      
+
       // Show success message
       setError("Post deleted successfully");
       setTimeout(() => setError(""), 3000);
     } catch (err) {
       console.log("Error deleting post:", err);
       console.error("Failed to delete post:", err);
-      
+
       if (err.response) {
         setError(`Failed to delete post: ${err.response.data.message || err.response.statusText || 'Server error'}`);
       } else if (err.request) {
@@ -272,6 +272,88 @@ function PostsPage() {
     );
   }
 
+  const renderEditModal = () => {
+    if (!showEditPopup) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg max-w-lg w-full p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold">Edit Post</h3>
+            <button
+              onClick={handleCloseEditPopup}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              &times;
+            </button>
+          </div>
+
+          <form onSubmit={handleUpdatePost}>
+            <div className="mb-3">
+              <label className="block text-gray-700 mb-1">Title</label>
+              <input
+                type="text"
+                name="title"
+                value={editFormData.title}
+                onChange={handleEditFormChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                required
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-gray-700 mb-1">Content</label>
+              <textarea
+                rows={4}
+                name="content"
+                value={editFormData.content}
+                onChange={handleEditFormChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                required
+              ></textarea>
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-gray-700 mb-1">Tags (comma separated)</label>
+              <input
+                type="text"
+                name="tags"
+                value={editFormData.tags}
+                onChange={handleEditFormChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="technology, programming, react"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                onClick={handleCloseEditPopup}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                disabled={updatingPost}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                disabled={updatingPost}
+              >
+                {updatingPost ? (
+                  <>
+                    <span className="inline-block animate-spin mr-2">⟳</span>
+                    Updating...
+                  </>
+                ) : 'Update Post'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-emerald-50 min-h-screen py-6 px-4 sm:px-6 lg:px-8">
       {/* Header Section */}
@@ -281,8 +363,8 @@ function PostsPage() {
             Community Posts
           </h1>
           {isAuthenticated && (
-            <Link 
-              to="/posts/new" 
+            <Link
+              to="/posts/new"
               className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -297,10 +379,10 @@ function PostsPage() {
         <div className="bg-white p-4 rounded-xl shadow-md mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
-              <button 
+              <button
                 className={`px-4 py-2 rounded-md transition-all ${
-                  filter === "latest" 
-                    ? "bg-emerald-600 text-white" 
+                  filter === "latest"
+                    ? "bg-emerald-600 text-white"
                     : "bg-emerald-100 hover:bg-emerald-200 text-emerald-700"
                 }`}
                 onClick={() => setFilter("latest")}
@@ -310,10 +392,10 @@ function PostsPage() {
                 </svg>
                 Latest
               </button>
-              <button 
+              <button
                 className={`px-4 py-2 rounded-md transition-all ${
-                  filter === "popular" 
-                    ? "bg-emerald-600 text-white" 
+                  filter === "popular"
+                    ? "bg-emerald-600 text-white"
                     : "bg-emerald-100 hover:bg-emerald-200 text-emerald-700"
                 }`}
                 onClick={() => setFilter("popular")}
@@ -324,10 +406,10 @@ function PostsPage() {
                 Popular
               </button>
               {isAuthenticated && (
-                <button 
+                <button
                   className={`px-4 py-2 rounded-md transition-all ${
-                    filter === "following" 
-                      ? "bg-emerald-600 text-white" 
+                    filter === "following"
+                      ? "bg-emerald-600 text-white"
                       : "bg-emerald-100 hover:bg-emerald-200 text-emerald-700"
                   }`}
                   onClick={() => setFilter("following")}
@@ -347,8 +429,8 @@ function PostsPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="bg-emerald-600 text-white px-4 py-2 rounded-r-md hover:bg-emerald-700"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -371,243 +453,188 @@ function PostsPage() {
           </div>
         )}
 
-      {posts.length > 0 ? (
-        <div className="row">
-          {posts.map((post, index) => (
-            <div className="col-md-6 mb-4" key={post._id || `post-${index}`}>
-              <div className="card h-100">
-                {post.imageUrl && (
-                  <img 
-                    src={post.imageUrl} 
-                    alt={post.title} 
-                    className="card-img-top" 
-                    style={{ height: "200px", objectFit: "cover" }} 
-                  />
-                )}
-                <div className="card-body">
-                  <div className="d-flex align-items-center mb-3">
-                    {post.author ? (
-                      <Link to={`/profile/${post.author._id}`} className="text-decoration-none">
-                        {post.author.profileImage ? (
-                          <img 
-                            src={post.author.profileImage} 
-                            alt={post.author.username} 
-                            className="w-10 h-10 rounded-full mr-3 object-cover ring-2 ring-emerald-500" 
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full flex items-center justify-center mr-3 bg-gradient-to-r from-emerald-400 to-teal-500 text-white font-bold">
-                            {post.author.username.charAt(0).toUpperCase()}
+        {posts.length > 0 ? (
+          <div className="row">
+            {posts.map((post, index) => (
+              <div className="col-md-6 mb-4" key={post._id || `post-${index}`}>
+                <div className="card h-100">
+                  {post.imageUrl && (
+                    <img
+                      src={post.imageUrl}
+                      alt={post.title}
+                      className="card-img-top"
+                      style={{ height: "200px", objectFit: "cover" }}
+                    />
+                  )}
+                  <div className="card-body">
+                    <div className="d-flex align-items-center mb-3">
+                      {post.author ? (
+                        <Link to={`/profile/${post.author._id}`} className="text-decoration-none">
+                          {post.author.profileImage ? (
+                            <img
+                              src={post.author.profileImage}
+                              alt={post.author.username}
+                              className="w-10 h-10 rounded-full mr-3 object-cover ring-2 ring-emerald-500"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center mr-3 bg-gradient-to-r from-emerald-400 to-teal-500 text-white font-bold">
+                              {post.author.username.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-medium text-gray-800 group-hover:text-emerald-600 transition-colors">
+                              {post.author.username}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(post.createdAt).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
                           </div>
-                        )}
-                        <div>
-                          <p className="font-medium text-gray-800 group-hover:text-emerald-600 transition-colors">
-                            {post.author.username}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(post.createdAt).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </p>
+                        </Link>
+                      ) : (
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center mr-3 bg-gray-200 text-gray-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <span className="fw-bold">unknwon</span>
+                            <br />
+                            <small className="text-muted">
+                              {new Date(post.createdAt).toLocaleDateString()}
+                            </small>
+                          </div>
                         </div>
-                      </Link>
-                    ) : (
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center mr-3 bg-gray-200 text-gray-500">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
+                      )}
+                    </div>
+
+                    {/* Title */}
+                    <h2 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2">{post.title}</h2>
+
+                    {/* Post Management Buttons */}
+                    {isAuthenticated && currentUser && post.author &&
+                      (currentUser._id === post.author._id || currentUser.id === post.author._id) && (
+                        <div className="flex gap-2 mb-4">
+                          <button
+                            className="flex items-center text-xs px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors"
+                            onClick={() => handleEditPost(post._id)}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit
+                          </button>
+                          <button
+                            className="flex items-center text-xs px-3 py-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors"
+                            onClick={() => handleDeletePost(post._id)}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </button>
                         </div>
-                        <div>
-                          <span className="fw-bold">unknwon</span>
-                          <br />
-                          <small className="text-muted">
-                            {new Date(post.createdAt).toLocaleDateString()}
-                          </small>
-                        </div>
+                      )}
+
+                    {/* Content */}
+                    <p className="text-gray-600 mb-4 line-clamp-3">
+                      {post.content.length > 150
+                        ? post.content.substring(0, 150) + "..."
+                        : post.content}
+                    </p>
+
+                    {/* Tags */}
+                    {post.tags && post.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        {post.tags.map((tag, index) => (
+                          <span
+                            key={`${post._id}-tag-${index}`}
+                            className="bg-emerald-100 text-emerald-600 text-xs px-2 py-1 rounded-full"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
                       </div>
                     )}
-                  </div>
-                  
-                  {/* Title */}
-                  <h2 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2">{post.title}</h2>
-                  
-                  {/* Post Management Buttons */}
-                  {isAuthenticated && currentUser && post.author && 
-                   (currentUser._id === post.author._id || currentUser.id === post.author._id) && (
-                    <div className="flex gap-2 mb-4">
-                      <button
-                        className="flex items-center text-xs px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors"
-                        onClick={() => handleEditPost(post._id)}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        Edit
-                      </button>
-                      <button
-                        className="flex items-center text-xs px-3 py-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors"
-                        onClick={() => handleDeletePost(post._id)}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Delete
-                      </button>
-                    </div>
-                  )}
-                  
-                  {/* Content */}
-                  <p className="text-gray-600 mb-4 line-clamp-3">
-                    {post.content.length > 150 
-                      ? post.content.substring(0, 150) + "..." 
-                      : post.content}
-                  </p>
-                  
-                  {/* Tags */}
-                  {post.tags && post.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-4">
-                      {post.tags.map((tag, index) => (
-                        <span 
-                          key={`${post._id}-tag-${index}`} 
-                          className="bg-emerald-100 text-emerald-600 text-xs px-2 py-1 rounded-full"
+
+                    {/* Post Actions */}
+                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <button
+                          className={`btn btn-sm ${isAuthenticated && post.likes && Array.isArray(post.likes) && post.likes.includes(currentUser?._id)
+                            ? "btn-danger"
+                            : "btn-outline-danger"}`}
+                          onClick={() => likePost(post.id)}
                         >
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {/* Post Actions */}
-                  <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
-                    <div className="flex items-center gap-3">
-                      <button 
-                        className={`btn btn-sm ${isAuthenticated && post.likes && Array.isArray(post.likes) && post.likes.includes(currentUser?._id) 
-                          ? "btn-danger" 
-                          : "btn-outline-danger"}`}
-                        onClick={() => likePost(post.id)}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill={
-                          isAuthenticated && post.likes && Array.isArray(post.likes) && post.likes.includes(currentUser?._id)
-                            ? "currentColor" 
-                            : "none"
-                        } viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                        </svg>
-                        {Array.isArray(post.likes) ? post.likes.length : 0}
-                      </button>
-                      
-                      <Link to={`/posts/${post.id}`} className="btn btn-sm btn-outline-primary ms-2">
-                        <i className="bi bi-chat-fill me-1"></i>
-                        {post.comments?.length || 0}
-                      </Link>
-                      
-                      {/* Add Edit button - only show for posts authored by current user */}
-                      {/* {isAuthenticated && post.author && post.author._id === currentUser?._id && ( */}
-                        <button 
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill={
+                            isAuthenticated && post.likes && Array.isArray(post.likes) && post.likes.includes(currentUser?._id)
+                              ? "currentColor"
+                              : "none"
+                          } viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                          </svg>
+                          {Array.isArray(post.likes) ? post.likes.length : 0}
+                        </button>
+
+                        <Link to={`/posts/${post.id}`} className="btn btn-sm btn-outline-primary ms-2">
+                          <i className="bi bi-chat-fill me-1"></i>
+                          {post.comments?.length || 0}
+                        </Link>
+
+                        {/* Add Edit button - only show for posts authored by current user */}
+                        {/* {isAuthenticated && post.author && post.author._id === currentUser?._id && ( */}
+                        <button
                           className="btn btn-sm btn-outline-secondary ms-2"
                           onClick={() => handleEditClick(post)}
                         >
                           <i className="bi bi-pencil-fill me-1"></i>
                           Edit
                         </button>
-                      {/* )} */}
+                        {/* )} */}
 
-                      {/* Add Delete button - only show for posts authored by current user */}
-                      {/* {isAuthenticated && post.author && post.author._id === currentUser?._id && ( */}
-                        <button 
+                        {/* Add Delete button - only show for posts authored by current user */}
+                        {/* {isAuthenticated && post.author && post.author._id === currentUser?._id && ( */}
+                        <button
                           className="btn btn-sm btn-outline-danger ms-2"
                           onClick={(e) => handleDeletePost(post.id, e)}
                         >
                           <i className="bi bi-trash-fill me-1"></i>
                           Delete
                         </button>
-                      {/* )} */}
+                        {/* )} */}
+                      </div>
+
+                      <Link to={`/posts/${post.id}`} className="btn btn-sm btn-link">
+                        Read More
+                      </Link>
                     </div>
-                    
-                    <Link to={`/posts/${post.id}`} className="btn btn-sm btn-link">
-                      Read More
-                    </Link>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-5">
-          <p className="lead text-muted">
-            {filter === "following" && isAuthenticated 
-              ? "No posts from people you follow. Start following more users to see their posts here!"
-              : "No posts found. Be the first to share your knowledge!"}
-          </p>
-          {isAuthenticated && (
-            <Link to="/posts/new" className="btn btn-primary mt-3">
-              Create New Post
-            </Link>
-          )}
-        </div>
-      )}
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-5">
+            <p className="lead text-muted">
+              {filter === "following" && isAuthenticated
+                ? "No posts from people you follow. Start following more users to see their posts here!"
+                : "No posts found. Be the first to share your knowledge!"}
+            </p>
+            {isAuthenticated && (
+              <Link to="/posts/new" className="btn btn-primary mt-3">
+                Create New Post
+              </Link>
+            )}
+          </div>
+        )}
 
-      {/* Add the Edit Post Modal */}
-      <Modal show={showEditPopup} onHide={handleCloseEditPopup} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Edit Post</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleUpdatePost}>
-            <Form.Group className="mb-3">
-              <Form.Label>Title</Form.Label>
-              <Form.Control
-                type="text"
-                name="title"
-                value={editFormData.title}
-                onChange={handleEditFormChange}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Content</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={4}
-                name="content"
-                value={editFormData.content}
-                onChange={handleEditFormChange}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Tags (comma separated)</Form.Label>
-              <Form.Control
-                type="text"
-                name="tags"
-                value={editFormData.tags}
-                onChange={handleEditFormChange}
-                placeholder="technology, programming, react"
-              />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseEditPopup} disabled={updatingPost}>
-            Cancel
-          </Button>
-          <Button 
-            variant="primary" 
-            onClick={handleUpdatePost} 
-            disabled={updatingPost}
-          >
-            {updatingPost ? (
-              <>
-                <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
-                <span className="ms-2">Updating...</span>
-              </>
-            ) : 'Update Post'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+        {/* Add the Edit Post Modal */}
+        {renderEditModal()}
+      </div>
     </div>
   );
 }
