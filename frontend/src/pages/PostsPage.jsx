@@ -163,9 +163,13 @@ function PostsPage() {
         .map(tag => tag.trim())
         .filter(tag => tag !== "");
       
+      // Include image properties from the original post
       const postData = {
         ...editFormData,
-        tags: tagsArray
+        tags: tagsArray,
+        // Preserve image data
+        imageUrl: editingPost.imageUrl,
+        imagePublicId: editingPost.imagePublicId
       };
       
       console.log("editingPost:", editingPost);
@@ -193,6 +197,8 @@ function PostsPage() {
               author: post.author, // Preserve author information
               createdAt: post.createdAt, // Preserve creation date
               tags: tagsArray, // Use our formatted tags
+              imageUrl: post.imageUrl, // Preserve image URL
+              imagePublicId: post.imagePublicId // Preserve image ID
             };
             return updatedPost;
           }
