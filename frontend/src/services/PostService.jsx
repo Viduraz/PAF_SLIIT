@@ -103,7 +103,7 @@ const PostService = {
 
   // Search posts by keyword
   searchPosts: (keyword) => {
-    return api.get(`/posts/search?keyword=${keyword}`);
+    return api.get(`/posts/search?title=${keyword}`);
   },
 
   // Get posts by tag
