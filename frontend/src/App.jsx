@@ -15,6 +15,7 @@ import PostDetailPage from "./pages/PostDetailPage";
 import CreatePostPage from "./pages/CreatePostPage";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import PlantingForm from "./pages/PlantingForm";
+import PlantingPlanEditPage from "./pages/PlantingPlanEditPage";
 
 
 
@@ -33,6 +34,7 @@ function App() {
               <Route path="/profile/:username" element={<ProfilePage />} />
               <Route path="/planting-plans" element={<PlantingPlanExplorer />} />
               <Route path="/planting-plans/:planId" element={<PlantingPlanDetail />} />
+              <Route path="/planting-plans/:planId/edit" element={<PlantingPlanEditPage />} />
               <Route path="/plant-progress/:progressId" element={<PlantProgressDetailPage />} />
               <Route path="/posts" element={<PostsPage />} />
               <Route path="/posts/new" element={<CreatePostPage />} />
