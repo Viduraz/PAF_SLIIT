@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react";
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
@@ -31,7 +31,9 @@ function ProfilePage() {
             const userResponse = await UserService.getUserByUsername(username);
             userId = userResponse.data._id || userResponse.data.id;
             // Check if this is the current user's profile
-            checkOwnProfile = isAuthenticated && currentUser &&
+            checkOwnProfile =
+              isAuthenticated &&
+              currentUser &&
               (currentUser._id === userId || currentUser.id === userId);
           } catch (err) {
             console.error("Error fetching user by username:", err);
@@ -60,7 +62,9 @@ function ProfilePage() {
 
         // Fetch user's plant progress
         try {
-          const progressResponse = await PlantProgressService.getUserProgress(userId);
+          const progressResponse = await PlantProgressService.getUserProgress(
+            userId
+          );
           setPlantProgress(progressResponse.data);
         } catch (progressErr) {
           console.warn("Could not load plant progress:", progressErr);
@@ -94,9 +98,15 @@ function ProfilePage() {
     }
   }, [username, currentUser, isAuthenticated]);
 
-  if (loading) return <div className="text-center mt-5"><div className="spinner-border"></div></div>;
+  if (loading)
+    return (
+      <div className="text-center mt-5">
+        <div className="spinner-border"></div>
+      </div>
+    );
   if (error) return <div className="alert alert-danger mt-3">{error}</div>;
-  if (!profile) return <div className="alert alert-warning mt-3">Profile not found</div>;
+  if (!profile)
+    return <div className="alert alert-warning mt-3">Profile not found</div>;
 
   return (
     <div className="container mt-4">
@@ -106,26 +116,32 @@ function ProfilePage() {
             <div className="card-body text-center">
               <div className="mb-3">
                 {profile.profileImage ? (
-                  <img 
-                    src={profile.profileImage} 
-                    alt={profile.username} 
-                    className="rounded-circle img-fluid" 
-                    style={{ width: "150px", height: "150px", objectFit: "cover" }}
+                  <img
+                    src={profile.profileImage}
+                    alt={profile.username}
+                    className="rounded-circle img-fluid"
+                    style={{
+                      width: "150px",
+                      height: "150px",
+                      objectFit: "cover",
+                    }}
                   />
                 ) : (
-                  <div 
-                    className="rounded-circle d-flex justify-content-center align-items-center bg-secondary mx-auto" 
+                  <div
+                    className="rounded-circle d-flex justify-content-center align-items-center bg-secondary mx-auto"
                     style={{ width: "150px", height: "150px" }}
                   >
-                    <span className="display-4 text-white">{profile.username.charAt(0).toUpperCase()}</span>
+                    <span className="display-4 text-white">
+                      {profile.username.charAt(0).toUpperCase()}
+                    </span>
                   </div>
                 )}
               </div>
               <h3>{profile.username}</h3>
               <p className="text-muted">{profile.email}</p>
-              
+
               {profile.bio && <p>{profile.bio}</p>}
-              
+
               <div className="d-flex justify-content-around mb-3">
                 <div>
                   <h5>{profile.followers?.length || 0}</h5>
@@ -136,28 +152,37 @@ function ProfilePage() {
                   <small className="text-muted">Following</small>
                 </div>
               </div>
-              
+
               {isOwnProfile ? (
-                <Link to="/profile/edit" className="btn btn-outline-primary w-100">
-                  Edit Profile
-                </Link>
+                <div className="d-flex gap-2">
+                  <Link
+                    to="/profile/edit"
+                    className="btn btn-outline-primary flex-grow-1"
+                  >
+                    Edit Profile
+                  </Link>
+                </div>
               ) : (
-                <button 
-                  className="btn btn-primary w-100"
-                >
-                  {profile.followers?.includes(currentUser?._id) ? "Unfollow" : "Follow"}
+                <button className="btn btn-primary w-100">
+                  {profile.followers?.includes(currentUser?._id)
+                    ? "Unfollow"
+                    : "Follow"}
                 </button>
               )}
             </div>
           </div>
-          
+
           <div className="card mt-3">
             <div className="card-header">Badges & Achievements</div>
             <div className="card-body">
               {profile.badges && profile.badges.length > 0 ? (
                 <div className="d-flex flex-wrap gap-2">
                   {profile.badges.map((badge, index) => (
-                    <div key={index} className="badge bg-success p-2" title={badge.description}>
+                    <div
+                      key={index}
+                      className="badge bg-success p-2"
+                      title={badge.description}
+                    >
                       {badge.name}
                     </div>
                   ))}
@@ -168,22 +193,26 @@ function ProfilePage() {
             </div>
           </div>
         </div>
-        
+
         <div className="col-md-8">
           <div className="card">
             <div className="card-header">
               <ul className="nav nav-tabs card-header-tabs">
                 <li className="nav-item">
-                  <button 
-                    className={`nav-link ${activeTab === 'progress' ? 'active' : ''}`} 
+                  <button
+                    className={`nav-link ${
+                      activeTab === "progress" ? "active" : ""
+                    }`}
                     onClick={() => setActiveTab("progress")}
                   >
                     Plant Progress
                   </button>
                 </li>
                 <li className="nav-item">
-                  <button 
-                    className={`nav-link ${activeTab === 'posts' ? 'active' : ''}`} 
+                  <button
+                    className={`nav-link ${
+                      activeTab === "posts" ? "active" : ""
+                    }`}
                     onClick={() => setActiveTab("posts")}
                   >
                     Posts
@@ -198,34 +227,47 @@ function ProfilePage() {
                   {plantProgress.length > 0 ? (
                     <div className="list-group">
                       {plantProgress.map((progress) => (
-                        <Link 
-                          key={progress._id} 
-                          to={`/plant-progress/${progress._id}`} 
+                        <Link
+                          key={progress._id}
+                          to={`/plant-progress/${progress._id}`}
                           className="list-group-item list-group-item-action"
                         >
                           <div className="d-flex w-100 justify-content-between">
-                            <h5 className="mb-1">{progress.plantingPlan.title}</h5>
-                            <small>{new Date(progress.updatedAt).toLocaleDateString()}</small>
+                            <h5 className="mb-1">
+                              {progress.plantingPlan.title}
+                            </h5>
+                            <small>
+                              {new Date(
+                                progress.updatedAt
+                              ).toLocaleDateString()}
+                            </small>
                           </div>
                           <div className="progress mb-2">
-                            <div 
-                              className="progress-bar bg-success" 
-                              role="progressbar" 
-                              style={{ width: `${progress.progressPercentage}%` }} 
-                              aria-valuenow={progress.progressPercentage} 
-                              aria-valuemin="0" 
+                            <div
+                              className="progress-bar bg-success"
+                              role="progressbar"
+                              style={{
+                                width: `${progress.progressPercentage}%`,
+                              }}
+                              aria-valuenow={progress.progressPercentage}
+                              aria-valuemin="0"
                               aria-valuemax="100"
                             >
                               {progress.progressPercentage}%
                             </div>
                           </div>
-                          <p className="mb-1">Completed {progress.completedMilestones.length} of {progress.plantingPlan.milestones.length} milestones</p>
+                          <p className="mb-1">
+                            Completed {progress.completedMilestones.length} of{" "}
+                            {progress.plantingPlan.milestones.length} milestones
+                          </p>
                         </Link>
                       ))}
                     </div>
                   ) : (
                     <div className="text-center py-4">
-                      <p className="text-muted mb-3">No plant progress tracked yet</p>
+                      <p className="text-muted mb-3">
+                        No plant progress tracked yet
+                      </p>
                       {isOwnProfile && (
                         <Link to="/planting-plans" className="btn btn-primary">
                           Start a Planting Plan
@@ -235,38 +277,52 @@ function ProfilePage() {
                   )}
                 </div>
               )}
-              
+
               {activeTab === "posts" && (
                 <div>
                   <div className="d-flex justify-content-between align-items-center mb-3">
                     <h4>Posts</h4>
                     {isOwnProfile && (
                       <Link to="/posts/new" className="btn btn-success">
-                        <i className="bi bi-plus-circle me-1"></i> Create New Post
+                        <i className="bi bi-plus-circle me-1"></i> Create New
+                        Post
                       </Link>
                     )}
                   </div>
-                  
+
                   {posts.length > 0 ? (
                     <div className="row">
                       {posts.map((post) => (
                         <div className="col-md-6 mb-4" key={post._id}>
                           <div className="card h-100">
                             {post.image && (
-                              <img src={post.image} className="card-img-top" alt={post.title} />
+                              <img
+                                src={post.image}
+                                className="card-img-top"
+                                alt={post.title}
+                              />
                             )}
                             <div className="card-body">
                               <h5 className="card-title">{post.title}</h5>
-                              <p className="card-text text-truncate">{post.content}</p>
-                              <Link to={`/posts/${post._id}`} className="btn btn-sm btn-outline-primary">
+                              <p className="card-text text-truncate">
+                                {post.content}
+                              </p>
+                              <Link
+                                to={`/posts/${post._id}`}
+                                className="btn btn-sm btn-outline-primary"
+                              >
                                 Read More
                               </Link>
                             </div>
                             <div className="card-footer text-muted">
-                              <small>{new Date(post.createdAt).toLocaleDateString()}</small>
+                              <small>
+                                {new Date(post.createdAt).toLocaleDateString()}
+                              </small>
                               <div className="float-end">
-                                <i className="bi bi-heart-fill text-danger me-1"></i> {post.likes?.length || 0}
-                                <i className="bi bi-chat-fill text-primary ms-3 me-1"></i> {post.comments?.length || 0}
+                                <i className="bi bi-heart-fill text-danger me-1"></i>{" "}
+                                {post.likes?.length || 0}
+                                <i className="bi bi-chat-fill text-primary ms-3 me-1"></i>{" "}
+                                {post.comments?.length || 0}
                               </div>
                             </div>
                           </div>

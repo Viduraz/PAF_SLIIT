@@ -30,6 +30,7 @@ export const AuthProvider = ({ children }) => {
 
         if (token && storedUser) {
           console.log('Token and user found in localStorage');
+          
           // Set the user from localStorage
           const parsedUser = JSON.parse(storedUser);
           setCurrentUser(parsedUser);
@@ -42,7 +43,7 @@ export const AuthProvider = ({ children }) => {
           console.log('Keeping user logged in from localStorage');
         }
       } catch (error) {
-        console.error('Error restoring authentication:', error);
+        console.error("Error restoring authentication:", error);
       } finally {
         setLoading(false);
       }
@@ -53,11 +54,34 @@ export const AuthProvider = ({ children }) => {
 
   const login = (userData) => {
     setCurrentUser(userData.user || userData);
-    localStorage.setItem('currentUser', JSON.stringify(userData.user || userData));
+    localStorage.setItem(
+      "currentUser",
+      JSON.stringify(userData.user || userData)
+    );
     if (userData.token) {
       const token = userData.token;
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
+  };
+
+  // Add the missing updateCurrentUser function
+  const updateCurrentUser = (updatedUserData) => {
+    // Update the currentUser state
+    setCurrentUser(prevUser => ({
+      ...prevUser,
+      ...updatedUserData
+    }));
+    
+    // Update the user data in localStorage
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      const updatedUser = {
+        ...parsedUser,
+        ...updatedUserData
+      };
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
     }
   };
 
@@ -69,7 +93,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, logout, loading, isAuthenticated: !!currentUser }}>
+    <AuthContext.Provider
+      value={{
+        currentUser,
+        login,
+        logout,
+        loading,
+        updateCurrentUser,
+        isAuthenticated: !!currentUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

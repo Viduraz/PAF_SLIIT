@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import PlantingPlanService from '../services/plantingPlanService';
-import '../styles/cursor.css';
+import { FaSeedling, FaLeaf, FaCloudSun, FaCalendarAlt, FaImage, FaPlus, FaMinus, FaArrowRight } from 'react-icons/fa';
 
 const plantCategories = {
     Vegetables: [
@@ -32,6 +32,9 @@ const plantCategories = {
     ]
 };
 
+// Static background image for form
+const bgImage = 'https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80';
+
 function PlantingForm() {
     const navigate = useNavigate();
     const { currentUser, isAuthenticated } = useAuth();
@@ -45,26 +48,6 @@ function PlantingForm() {
         expectedHarvest: '',
         steps: [{ description: '', photos: [] }]
     });
-
-    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-
-    useEffect(() => {
-        // Redirect if not authenticated
-        // if (!isAuthenticated) {
-        //     navigate('/login?redirect=plantingfoam');
-        //     return;
-        // }
-        
-        const updateMousePosition = (e) => {
-            setMousePosition({ x: e.clientX, y: e.clientY });
-        };
-
-        window.addEventListener('mousemove', updateMousePosition);
-
-        return () => {
-            window.removeEventListener('mousemove', updateMousePosition);
-        };
-    }, [isAuthenticated, navigate]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -153,240 +136,288 @@ function PlantingForm() {
         }
     };
 
-    // If not authenticated, show a message instead of the form
+    // If not authenticated, show a beautiful login prompt
     if (!isAuthenticated) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-green-50 to-green-100 py-12 px-4 flex items-center justify-center">
-                <div className="max-w-md mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
-                    <div className="bg-green-600 py-6 px-8">
-                        <h1 className="text-3xl font-bold text-center text-white">
-                            🌱 Plant Growth Tracking
-                        </h1>
-                    </div>
-                    <div className="p-8 text-center">
-                        <div className="text-8xl mb-4">🔒</div>
-                        <h2 className="text-xl font-semibold mb-4">Authentication Required</h2>
-                        <p className="mb-6">You need to be logged in to create a planting plan.</p>
-                        <div className="flex flex-col space-y-3">
-                            <Link to="/login?redirect=plantingfoam" 
-                                  className="w-full px-6 py-3 text-white text-lg font-semibold rounded-lg bg-green-600 hover:bg-green-700 transition-colors">
-                                Log In
-                            </Link>
-                            <Link to="/register" 
-                                  className="w-full px-6 py-3 text-green-700 text-lg font-semibold rounded-lg border border-green-600 hover:bg-green-50 transition-colors">
-                                Create Account
-                            </Link>
+            <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4" 
+                style={{
+                    backgroundImage: `url(${bgImage})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                }}>
+                {/* Static background with overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-green-900/70 via-green-800/70 to-green-700/70 backdrop-blur-sm z-0"></div>
+
+                {/* Login card with glass effect */}
+                <motion.div
+                    className="w-full max-w-md z-10"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                >
+                    <div className="bg-white/10 backdrop-blur-xl rounded-2xl overflow-hidden shadow-2xl border border-white/20">
+                        <div className="bg-gradient-to-r from-green-600 to-emerald-600 py-8 px-8 relative overflow-hidden">
+                            <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-xl"></div>
+                            <div className="relative z-10">
+                                <h1 className="text-4xl font-bold text-center text-white drop-shadow-lg flex items-center justify-center">
+                                    <span className="inline-block mr-3">
+                                        <FaSeedling size={40} />
+                                    </span>
+                                    Plant Tracker
+                                </h1>
+                                <p className="text-center text-white/80 mt-3 text-lg">
+                                    Document your green journey
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="p-8 bg-gradient-to-b from-white/5 to-white/10 text-center relative">
+                            <div className="absolute w-40 h-40 bg-emerald-300/10 rounded-full blur-3xl -bottom-20 -left-20"></div>
+                            
+                            <div className="relative z-10">
+                                <div className="text-8xl mb-6 flex justify-center">
+                                    🌱
+                                </div>
+                                <h2 className="text-2xl font-semibold mb-4 text-white">Authentication Required</h2>
+                                <p className="mb-8 text-white/80 text-lg">Login to create and track your planting plans</p>
+                                
+                                <div className="flex flex-col space-y-4">
+                                    <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                                        <Link 
+                                            to="/login?redirect=plantingfoam" 
+                                            className="w-full px-6 py-4 text-white text-lg font-semibold rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg flex items-center justify-center"
+                                        >
+                                            <FaArrowRight className="mr-2" /> Log In
+                                        </Link>
+                                    </motion.div>
+                                    <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                                        <Link 
+                                            to="/register" 
+                                            className="w-full px-6 py-4 text-white text-lg font-semibold rounded-lg border border-white/30 backdrop-blur-sm hover:bg-white/10 transition-all flex items-center justify-center"
+                                        >
+                                            <FaPlus className="mr-2" /> Create Account
+                                        </Link>
+                                    </motion.div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </motion.div>
             </div>
         );
     }
 
+    // Main form for authenticated users
     return (
-        <>
-            <motion.div
-                className="custom-cursor"
-                animate={{
-                    x: mousePosition.x - 16,
-                    y: mousePosition.y - 16,
-                    rotate: mousePosition.x * 0.05,
-                    scale: 1
-                }}
-                whileTap={{ scale: 0.8 }}
-                transition={{
-                    type: "spring",
-                    damping: 12,
-                    stiffness: 150,
-                    mass: 0.1
-                }}
-            >
-                <motion.span 
-                    className="cursor-content"
-                    animate={{ 
-                        rotate: [0, 10, -10, 0],
-                    }}
-                    transition={{
-                        duration: 4,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                    }}
-                >
-                    🌿
-                </motion.span>
-            </motion.div>
-            <motion.div 
-                className="leaf-cursor min-h-screen bg-gradient-to-b from-green-50 to-green-100 py-12 px-4"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-            >
+        <div className="min-h-screen relative overflow-hidden"
+            style={{
+                backgroundImage: `url(${bgImage})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+            }}>
+            {/* Static background with overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-green-900/70 via-green-800/70 to-emerald-900/70 backdrop-blur-sm z-0"></div>
+
+            {/* Main form container */}
+            <div className="py-16 px-4 relative z-10">
                 <motion.div 
-                    initial={{ y: -20 }}
-                    animate={{ y: 0 }}
-                    className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden"
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8 }}
+                    className="max-w-4xl mx-auto bg-white/10 backdrop-blur-2xl rounded-2xl shadow-2xl overflow-hidden border border-white/20"
                 >
-                    <motion.div 
-                        whileHover={{ scale: 1.01 }}
-                        className="bg-green-600 py-6 px-8"
-                    >
-                        <motion.h1 
-                            initial={{ scale: 0.9 }}
-                            animate={{ scale: 1 }}
-                            className="text-3xl font-bold text-center text-white"
-                        >
-                            🌱 Plant Growth Tracking System
-                        </motion.h1>
-                        <p className="text-center text-green-100 mt-2">
-                            Track and monitor your plant's journey from seed to harvest
-                        </p>
-                    </motion.div>
-                    
-                    <motion.div className="p-8">
-                        <motion.div
-                            initial={{ rotate: -10, scale: 0.9 }}
-                            animate={{ 
-                                rotate: 5,
-                                scale: 1.1,
-                                transition: {
-                                    duration: 2,
-                                    repeat: Infinity,
-                                    repeatType: "reverse",
-                                    ease: "easeInOut"
-                                }
-                            }}
-                            className="absolute top-10 right-10 text-8xl transform -rotate-12 opacity-30 select-none floating-leaf"
-                            style={{ zIndex: 0 }}
-                        >
-                            🌿
-                        </motion.div>
-                        <motion.div
-                            initial={{ rotate: 10, scale: 0.9 }}
-                            animate={{ 
-                                rotate: -5,
-                                scale: 1.1,
-                                transition: {
-                                    duration: 2.5,
-                                    repeat: Infinity,
-                                    repeatType: "reverse",
-                                    ease: "easeInOut"
-                                }
-                            }}
-                            className="absolute bottom-10 left-10 text-8xl transform rotate-45 opacity-30 select-none floating-leaf"
-                            style={{ zIndex: 0 }}
-                        >
-                            🌿
-                        </motion.div>
+                    <div className="bg-gradient-to-r from-green-600 to-emerald-600 py-8 px-8 relative overflow-hidden">
+                        {/* Decorative elements */}
+                        <div className="absolute -left-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-xl"></div>
+                        <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl"></div>
                         
+                        <div className="relative z-10">
+                            <div className="flex items-center justify-center mb-2">
+                                <div className="inline-block mr-4">
+                                    <FaSeedling size={50} className="text-green-200" />
+                                </div>
+                                <h1 className="text-4xl font-bold text-white">Plant Growth Tracker</h1>
+                            </div>
+                            <p className="text-center text-green-100 text-lg">
+                                Document and monitor your plant's journey from seed to harvest
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div className="p-8 bg-gradient-to-b from-white/5 to-white/10 relative">
                         {/* Success message */}
                         {success && (
-                            <div className="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
-                                <strong className="font-bold">Success!</strong>
-                                <span className="block sm:inline"> Your planting plan has been created. Redirecting you to the details page...</span>
-                            </div>
+                            <motion.div
+                                initial={{ opacity: 0, y: -20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mb-6 bg-green-500/80 backdrop-blur-sm border border-green-400 text-white px-6 py-4 rounded-xl relative"
+                                role="alert"
+                            >
+                                <div className="flex items-center">
+                                    <div className="mr-3">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <strong className="font-bold">Success!</strong>
+                                        <span className="block sm:inline"> Your planting plan has been created. Redirecting you to the details page...</span>
+                                    </div>
+                                </div>
+                            </motion.div>
                         )}
                         
                         {/* Error message */}
                         {error && (
-                            <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                                <strong className="font-bold">Error!</strong>
-                                <span className="block sm:inline"> {error}</span>
-                            </div>
+                            <motion.div
+                                initial={{ opacity: 0, y: -20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mb-6 bg-red-500/80 backdrop-blur-sm border border-red-400 text-white px-6 py-4 rounded-xl relative"
+                                role="alert"
+                            >
+                                <div className="flex items-center">
+                                    <div className="mr-3">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <strong className="font-bold">Error!</strong>
+                                        <span className="block sm:inline"> {error}</span>
+                                    </div>
+                                </div>
+                            </motion.div>
                         )}
                         
                         {/* Form content */}
-                        <form onSubmit={handleSubmit} className="space-y-6 relative" style={{ zIndex: 1 }}>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-green-50 p-4 rounded-lg">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Plant Type</label>
+                        <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
+                            <motion.div 
+                                className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2, duration: 0.4 }}
+                            >
+                                <motion.div 
+                                    className="bg-white/10 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/20"
+                                    whileHover={{ scale: 1.02, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
+                                    transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                                >
+                                    <label className="block text-lg font-semibold text-white mb-3 flex items-center">
+                                        <FaLeaf className="mr-2 text-green-300" /> Plant Type
+                                    </label>
                                     <select
                                         name="plantType"
                                         value={plantingData.plantType}
                                         onChange={handleChange}
-                                        className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                        className="mt-1 block w-full px-4 py-3 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-white"
                                         required
                                         disabled={loading}
                                     >
-                                        <option value="">Select a plant type</option>
+                                        <option value="" className="bg-green-800 text-white">Select a plant type</option>
                                         {Object.entries(plantCategories).map(([category, plants]) => (
-                                            <optgroup key={category} label={category}>
+                                            <optgroup key={category} label={category} className="bg-green-800 text-white">
                                                 {plants.map((plant) => (
-                                                    <option key={plant} value={plant}>
+                                                    <option key={plant} value={plant} className="bg-green-800 text-white">
                                                         {plant}
                                                     </option>
                                                 ))}
                                             </optgroup>
                                         ))}
                                     </select>
-                                </div>
+                                </motion.div>
 
-                                <div className="bg-green-50 p-4 rounded-lg">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Date Planted</label>
+                                <motion.div 
+                                    className="bg-white/10 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/20"
+                                    whileHover={{ scale: 1.02, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
+                                    transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                                >
+                                    <label className="block text-lg font-semibold text-white mb-3 flex items-center">
+                                        <FaCalendarAlt className="mr-2 text-green-300" /> Date Planted
+                                    </label>
                                     <input
                                         type="date"
                                         name="datePlanted"
                                         value={plantingData.datePlanted}
                                         onChange={handleChange}
-                                        className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                        className="mt-1 block w-full px-4 py-3 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-white"
                                         required
                                         disabled={loading}
                                     />
-                                </div>
-                            </div>
+                                </motion.div>
+                            </motion.div>
 
-                            <div className="mt-8">
-                                <motion.h2 
-                                    className="text-xl font-semibold text-gray-700 mb-4"
-                                    whileHover={{ x: 5 }}
-                                >
-                                    Growth Steps
-                                </motion.h2>
+                            <motion.div 
+                                className="mt-10"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4, duration: 0.4 }}
+                            >
+                                <div className="text-2xl font-semibold text-white mb-6 flex items-center">
+                                    <FaCloudSun className="mr-3 text-yellow-300" /> Growth Stages
+                                </div>
                                 <AnimatePresence>
                                     {plantingData.steps.map((step, index) => (
                                         <motion.div
                                             key={index}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, x: -100 }}
-                                            className="bg-green-50 p-6 rounded-lg mb-4 relative"
+                                            initial={{ opacity: 0, scale: 0.9 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.9, x: -100 }}
+                                            className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md p-6 rounded-xl mb-6 relative shadow-lg border border-white/20"
                                         >
-                                            <div className="flex justify-between items-center mb-3">
-                                                <label className="text-lg font-medium text-gray-700">
-                                                    Step {index + 1}
+                                            <div className="flex justify-between items-center mb-4">
+                                                <label className="text-xl font-medium text-white flex items-center">
+                                                    <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center mr-3 shadow-sm">
+                                                        <span className="text-white font-bold">{index + 1}</span>
+                                                    </div>
+                                                    Growth Stage {index + 1}
                                                 </label>
                                                 {plantingData.steps.length > 1 && (
-                                                    <button 
+                                                    <motion.button 
                                                         type="button"
                                                         onClick={() => handleDeleteStep(index)}
-                                                        className="px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                                                        className="px-4 py-2 bg-red-500/80 text-white rounded-lg hover:bg-red-600/90 transition-colors flex items-center"
+                                                        whileHover={{ scale: 1.05 }}
+                                                        whileTap={{ scale: 0.95 }}
                                                         disabled={loading}
                                                     >
-                                                        Remove Step
-                                                    </button>
+                                                        <FaMinus className="mr-2" /> Remove
+                                                    </motion.button>
                                                 )}
                                             </div>
                                             <textarea
                                                 value={step.description}
                                                 onChange={(e) => handleStepChange(index, e)}
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                                                placeholder="Describe this growth step..."
-                                                rows="3"
+                                                className="w-full px-4 py-3 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-white"
+                                                placeholder="Describe this growth stage in detail..."
+                                                rows="4"
                                                 required
                                                 disabled={loading}
                                             />
-                                            <div className="mt-3">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    📸 Add Photos for Step {index + 1}
+                                            <div className="mt-4">
+                                                <label className="block text-base font-medium text-white mb-2 flex items-center">
+                                                    <FaImage className="mr-2 text-green-300" /> Add Photos for Stage {index + 1}
                                                 </label>
-                                                <input
-                                                    type="file"
-                                                    onChange={(e) => handlePhotoChange(index, e)}
-                                                    className="w-full"
-                                                    multiple
-                                                    disabled={loading}
-                                                />
-                                                <small className="text-gray-500 mt-1 block">
-                                                    Note: Photo upload is not fully implemented in this version
-                                                </small>
+                                                <div className="flex items-center bg-white/10 rounded-lg p-3 border border-white/20">
+                                                    <label className="cursor-pointer bg-white/20 backdrop-blur-sm hover:bg-white/30 px-4 py-2 rounded-md transition-colors text-white flex items-center">
+                                                        <FaImage className="mr-2" /> Select Images
+                                                        <input
+                                                            type="file"
+                                                            onChange={(e) => handlePhotoChange(index, e)}
+                                                            className="hidden"
+                                                            multiple
+                                                            disabled={loading}
+                                                            accept="image/*"
+                                                        />
+                                                    </label>
+                                                    {step.photos.length > 0 && (
+                                                        <span className="ml-3 text-sm text-white/80">
+                                                            {step.photos.length} {step.photos.length === 1 ? 'file' : 'files'} selected
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-white/60 mt-2">
+                                                    Note: Image uploads will be available in the next update
+                                                </p>
                                             </div>
                                         </motion.div>
                                     ))}
@@ -394,51 +425,69 @@ function PlantingForm() {
                                 <motion.button 
                                     type="button" 
                                     onClick={addStep}
-                                    whileHover={{ scale: 1.02 }}
+                                    whileHover={{ scale: 1.02, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
                                     whileTap={{ scale: 0.98 }}
-                                    className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                                    className="w-full px-6 py-4 bg-gradient-to-r from-green-500/80 to-emerald-600/80 backdrop-blur-sm text-white rounded-xl hover:from-green-500/90 hover:to-emerald-600/90 transition-all flex items-center justify-center shadow-lg border border-white/20"
                                     disabled={loading}
                                 >
-                                    <span>➕ Add Another Step</span>
+                                    <FaPlus className="mr-2" /> Add Another Growth Stage
                                 </motion.button>
-                            </div>
+                            </motion.div>
 
-                            <div className="bg-green-50 p-4 rounded-lg mt-6">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Expected Harvest Date</label>
+                            <motion.div 
+                                className="bg-white/10 backdrop-blur-md p-6 rounded-xl mt-8 shadow-lg border border-white/20"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.6, duration: 0.4 }}
+                                whileHover={{ scale: 1.02, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
+                            >
+                                <label className="block text-lg font-semibold text-white mb-3 flex items-center">
+                                    <FaCalendarAlt className="mr-2 text-green-300" /> Expected Harvest Date
+                                </label>
                                 <input
                                     type="date"
                                     name="expectedHarvest"
                                     value={plantingData.expectedHarvest}
                                     onChange={handleChange}
-                                    className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                    className="mt-1 block w-full px-4 py-3 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-white"
                                     required
                                     disabled={loading}
                                 />
-                            </div>
+                            </motion.div>
 
                             <motion.button 
                                 type="submit"
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                className={`w-full px-6 py-4 text-white text-lg font-semibold rounded-lg transition-colors mt-8 shadow-lg ${
-                                    loading ? 'bg-gray-500 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                                whileHover={{ scale: 1.03, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }}
+                                whileTap={{ scale: 0.97 }}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.8, duration: 0.4 }}
+                                className={`w-full px-8 py-5 text-white text-xl font-semibold rounded-xl transition-all mt-10 shadow-xl border border-white/30 ${
+                                    loading 
+                                        ? 'bg-gray-500/70 backdrop-blur-sm cursor-not-allowed' 
+                                        : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'
                                 }`}
                                 disabled={loading}
                             >
                                 {loading ? (
-                                    <>
-                                        <span className="inline-block animate-spin mr-2">🔄</span>
-                                        Submitting...
-                                    </>
+                                    <div className="flex items-center justify-center">
+                                        <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Creating Your Plan...
+                                    </div>
                                 ) : (
-                                    <>🌿 Submit Planting Plan</>
+                                    <div className="flex items-center justify-center">
+                                        <FaSeedling className="mr-3 text-2xl" /> Create Planting Plan
+                                    </div>
                                 )}
                             </motion.button>
                         </form>
-                    </motion.div>
+                    </div>
                 </motion.div>
-            </motion.div>
-        </>
+            </div>
+        </div>
     );
 }
 
