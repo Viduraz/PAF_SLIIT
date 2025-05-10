@@ -25,6 +25,12 @@ function PostsPage() {
     tags: ""
   });
 
+  // Add these state variables near your other useState declarations
+  const [expandedPostId, setExpandedPostId] = useState(null);
+  const [newCommentText, setNewCommentText] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editCommentText, setEditCommentText] = useState("");
+
   useEffect(() => {
     fetchPosts();
   }, [filter]);
@@ -133,6 +139,16 @@ function PostsPage() {
       tags: Array.isArray(post.tags) ? post.tags.join(", ") : ""
     });
     setShowEditPopup(true);
+  };
+
+  const handleEditPost = (postId) => {
+    const post = posts.find(p => p._id === postId || p.id === postId);
+    if (post) {
+      handleEditClick(post);
+    } else {
+      console.error("Post not found for editing:", postId);
+      setError("Failed to edit post: Post not found");
+    }
   };
 
   const handleCloseEditPopup = () => {
@@ -265,6 +281,153 @@ function PostsPage() {
       } else {
         setError(`Failed to delete post: ${err.message}`);
       }
+    }
+  };
+
+  // Add these functions alongside your other handler functions
+  const toggleComments = (postId) => {
+    setExpandedPostId(expandedPostId === postId ? null : postId);
+    setNewCommentText("");
+  };
+
+  const handleAddComment = async (postId) => {
+    if (!isAuthenticated) {
+      alert("You need to login to comment");
+      return;
+    }
+    
+    if (!newCommentText.trim()) return;
+    
+    try {
+      const response = await PostService.addComment(postId, {
+        content: newCommentText,
+        authorId: currentUser._id || currentUser.id
+      });
+      
+      // Add new comment to the post
+      setPosts(posts.map(post => {
+        if (post._id === postId || post.id === postId) {
+          const newComment = {
+            ...response.data,
+            author: {
+              _id: currentUser._id || currentUser.id,
+              username: currentUser.username,
+              profileImage: currentUser.profileImage
+            },
+            createdAt: new Date().toISOString()
+          };
+          
+          return {
+            ...post,
+            comments: [...(post.comments || []), newComment]
+          };
+        }
+        return post;
+      }));
+      
+      setNewCommentText("");
+    } catch (err) {
+      console.error("Failed to add comment:", err);
+      setError("Failed to add comment. Please try again.");
+    }
+  };
+
+  // Update the startEditComment function to handle both id formats
+  const startEditComment = (comment) => {
+    console.log("Starting to edit comment:", comment);
+    
+    // Check for either _id or id property
+    const commentId = comment?._id || comment?.id;
+    
+    if (!comment || !commentId) {
+      console.error("Invalid comment data:", comment);
+      setError("Error: Cannot edit this comment");
+      return;
+    }
+    
+    setEditingCommentId(commentId);
+    setEditCommentText(comment.content || "");
+  };
+
+  // Update the handleUpdateComment function
+  const handleUpdateComment = async (postId, commentId) => {
+    console.log(`Updating comment ${commentId} for post ${postId} with text: ${editCommentText}`);
+    
+    try {
+      if (!editCommentText.trim()) {
+        setError("Comment text cannot be empty");
+        return;
+      }
+      
+      const response = await CommentService.updateComment(commentId, { content: editCommentText });
+      console.log("Comment update response:", response);
+      
+      // Update comment in the posts state
+      setPosts(posts.map(post => {
+        if (post._id === postId || post.id === postId) {
+          return {
+            ...post,
+            comments: post.comments.map(comment => {
+              const currentCommentId = comment._id || comment.id;
+              if (currentCommentId === commentId) {
+                return { 
+                  ...comment, 
+                  content: editCommentText,
+                  updatedAt: new Date().toISOString()
+                };
+              }
+              return comment;
+            })
+          };
+        }
+        return post;
+      }));
+      
+      // Clear the edit state
+      setEditingCommentId(null);
+      setEditCommentText("");
+      
+      // Show success message
+      setError("✅ Comment updated successfully");
+      setTimeout(() => setError(""), 3000);
+    } catch (err) {
+      console.error("Failed to update comment:", err);
+      setError("❌ Failed to update comment. Please try again.");
+    }
+  };
+
+  // Update handleDeleteComment function
+  const handleDeleteComment = async (postId, commentId) => {
+    console.log(`Attempting to delete comment ${commentId} from post ${postId}`);
+    
+    if (!window.confirm("Are you sure you want to delete this comment?")) {
+      return;
+    }
+    
+    try {
+      await CommentService.deleteComment(commentId);
+      console.log(`Comment ${commentId} deleted successfully`);
+      
+      // Remove deleted comment from the posts state
+      setPosts(posts.map(post => {
+        if (post._id === postId || post.id === postId) {
+          return {
+            ...post,
+            comments: post.comments.filter(comment => {
+              const currentCommentId = comment._id || comment.id;
+              return currentCommentId !== commentId;
+            })
+          };
+        }
+        return post;
+      }));
+      
+      // Show success message
+      setError("🗑️ Comment deleted successfully");
+      setTimeout(() => setError(""), 3000);
+    } catch (err) {
+      console.error("Failed to delete comment:", err);
+      setError("❌ Failed to delete comment. Please try again.");
     }
   };
 
@@ -618,6 +781,129 @@ function PostsPage() {
                       <Link to={`/posts/${post.id}`} className="btn btn-sm btn-link">
                         Read More
                       </Link>
+                    </div>
+
+                    {/* Comments Section */}
+                    <div className="mt-4">
+                      <button
+                        onClick={() => toggleComments(post._id || post.id)}
+                        className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                      >
+                        {expandedPostId === (post._id || post.id) ? 
+                          <span><i className="bi bi-dash-circle mr-1"></i>Hide Comments</span> : 
+                          <span><i className="bi bi-plus-circle mr-1"></i>Show Comments ({post.comments?.length || 0})</span>
+                        }
+                      </button>
+                      
+                      {expandedPostId === (post._id || post.id) && (
+                        <div className="mt-3 border-t pt-3">
+                          {/* Comment List */}
+                          {post.comments && post.comments.length > 0 ? (
+                            <div className="space-y-3 mb-4">
+                              {post.comments.map(comment => (
+                                <div key={comment._id} className="bg-gray-50 p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex items-center mb-1">
+                                      {comment.author ? (
+                                        <Link to={`/profile/${comment.author._id || comment.author.id}`} className="flex items-center">
+                                          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center mr-2 text-emerald-700">
+                                            {comment.author.username.charAt(0).toUpperCase()}
+                                          </div>
+                                          <span className="font-medium text-sm">{comment.author.username}</span>
+                                        </Link>
+                                      ) : (
+                                        <div className="flex items-center">
+                                          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-2 text-gray-500">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                          </div>
+                                          <span className="font-medium text-sm">Unknown User</span>
+                                        </div>
+                                      )}
+                                      <span className="text-xs text-gray-500 ml-2">
+                                        {new Date(comment.createdAt).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  
+                                  {(editingCommentId === comment._id || editingCommentId === comment.id) ? (
+                                    <div className="mt-2">
+                                      <textarea
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        value={editCommentText}
+                                        onChange={(e) => setEditCommentText(e.target.value)}
+                                        rows="2"
+                                        autoFocus
+                                      ></textarea>
+                                      <div className="flex justify-end gap-2 mt-2">
+                                        <button
+                                          onClick={() => setEditingCommentId(null)}
+                                          className="px-3 py-1.5 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+                                        >
+                                          Cancel ❌
+                                        </button>
+                                        <button
+                                          onClick={() => handleUpdateComment(post._id || post.id, comment._id || comment.id)}
+                                          className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                        >
+                                          Save ✅
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <p className="text-sm mt-1 break-words">{comment.content}</p>
+                                      
+                                      {/* ALWAYS VISIBLE EDIT/DELETE BUTTONS */}
+                                      <div className="flex justify-end mt-2 gap-2">
+                                        <button 
+                                          onClick={() => startEditComment(comment)}
+                                          className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition-colors"
+                                        >
+                                          Edit ✏️
+                                        </button>
+                                        <button 
+                                          onClick={() => handleDeleteComment(post._id || post.id, comment._id || comment.id)}
+                                          className="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition-colors"
+                                        >
+                                          Delete 🗑️
+                                        </button>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500 py-2">No comments yet.</p>
+                          )}
+                          
+                          {/* Add Comment Form */}
+                          {isAuthenticated && (
+                            <div className="mt-3">
+                              <div className="flex gap-2">
+                                <textarea
+                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                  placeholder="Write a comment..."
+                                  value={newCommentText}
+                                  onChange={(e) => setNewCommentText(e.target.value)}
+                                  rows="2"
+                                ></textarea>
+                                <button
+                                  onClick={() => handleAddComment(post._id || post.id)}
+                                  disabled={!newCommentText.trim()}
+                                  className={`px-4 py-2 rounded-md text-white text-sm ${
+                                    newCommentText.trim() ? "bg-green-600 hover:bg-green-700" : "bg-gray-400 cursor-not-allowed"
+                                  }`}
+                                >
+                                  Post
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
