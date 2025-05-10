@@ -42,7 +42,7 @@ function HomePage() {
                 {/* Fixed link to show all planting plans instead of a specific progress ID */}
                 <Link to="/planting-plans" className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-3 rounded-lg shadow-md transform hover:-translate-y-1 transition-all duration-200 flex items-center">
                   <FaLeaf className="mr-2" /> Add Plant Progress
-                </Link> */}
+                </Link>
               </div>
             </div>
           ) : (
@@ -113,6 +113,7 @@ function HomePage() {
       </div>
     </div>
   );
+
 }
 
 export default HomePage;
