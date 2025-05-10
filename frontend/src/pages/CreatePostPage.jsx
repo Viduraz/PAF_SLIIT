@@ -14,6 +14,8 @@ function CreatePostPage() {
   });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   // Move navigation to useEffect
   useEffect(() => {
@@ -32,6 +34,19 @@ function CreatePostPage() {
     setFormData({ ...formData, [name]: value });
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      // Create a preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -45,13 +60,31 @@ function CreatePostPage() {
     try {
       setIsSubmitting(true);
       
-      // Process tags from comma-separated string to array
-      const processedData = {
-        ...formData,
-        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : []
-      };
+      let response;
       
-      const response = await PostService.createPost(processedData);
+      if (selectedFile) {
+        // Create form data for multipart request
+        const formDataObj = new FormData();
+        formDataObj.append("file", selectedFile);
+        formDataObj.append("title", formData.title);
+        formDataObj.append("content", formData.content);
+        formDataObj.append("userId", currentUser._id);
+        if (formData.tags) {
+          formDataObj.append("tags", formData.tags);
+        }
+        
+        // Use the endpoint that handles file uploads
+        response = await PostService.createPostWithImage(formDataObj);
+      } else {
+        // Process tags from comma-separated string to array
+        const processedData = {
+          ...formData,
+          tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : []
+        };
+        
+        response = await PostService.createPost(processedData);
+      }
+      
       console.log("Post created response:", response.data);
       
       // Check if we got a valid post ID back
@@ -124,6 +157,27 @@ function CreatePostPage() {
                   <small className="text-muted">
                     Enter a URL to an image that illustrates your post.
                   </small>
+                </div>
+
+                <div className="mb-3">
+                  <label htmlFor="image" className="form-label">Upload Image (optional)</label>
+                  <input
+                    type="file"
+                    className="form-control"
+                    id="image"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                  />
+                  {previewUrl && (
+                    <div className="mt-2">
+                      <img 
+                        src={previewUrl} 
+                        alt="Preview" 
+                        className="img-thumbnail" 
+                        style={{ maxHeight: "200px" }} 
+                      />
+                    </div>
+                  )}
                 </div>
                 
                 <div className="mb-3">

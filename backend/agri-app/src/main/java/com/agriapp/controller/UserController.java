@@ -57,14 +57,41 @@ public class UserController {
 
     @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable String id, @RequestBody User user) {
-        user.setId(id);
-        return new ResponseEntity<>(userService.updateUser(user), HttpStatus.OK);
+        try {
+            user.setId(id);
+            User updatedUser = userService.updateUser(user);
+            return new ResponseEntity<>(updatedUser, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            // Handle specific exceptions with appropriate HTTP status codes
+            if (e.getMessage().contains("not found")) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+            } else if (e.getMessage().contains("already taken") || e.getMessage().contains("already in use")) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
+            } else {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Error updating user: " + e.getMessage());
+            }
+        }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable String id) {
-        userService.deleteUser(id);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    public ResponseEntity<Map<String, String>> deleteUser(@PathVariable String id) {
+        try {
+            userService.deleteUser(id);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "User successfully deleted");
+            response.put("userId", id);
+
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("not found")) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+            } else {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Error deleting user: " + e.getMessage());
+            }
+        }
     }
 
     @PutMapping("/{id}/badges/{badge}")
@@ -89,23 +116,23 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> loginUser(@RequestBody Map<String, String> credentials) {
         String username = credentials.get("username");
         String password = credentials.get("password");
-        
+
         // Validate credentials
         Optional<User> userOptional = userService.getUserByUsername(username);
         if (userOptional.isEmpty() || !userService.validatePassword(password, userOptional.get().getPassword())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
-        
+
         User user = userOptional.get();
-        
+
         // Generate JWT token
         String token = userService.generateToken(user);
-        
+
         // Create response
         Map<String, Object> response = new HashMap<>();
         response.put("user", user);
         response.put("token", token);
-        
+
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
@@ -115,26 +142,26 @@ public class UserController {
         if (userService.existsByUsername(user.getUsername())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Username already taken");
         }
-        
+
         if (userService.existsByEmail(user.getEmail())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already in use");
         }
-        
+
         // Set default properties for new user
         user.setCreatedAt(new Date());
         user.setRole("user"); // Default role
-        
+
         // Create the user (service should handle password hashing)
         User createdUser = userService.createUser(user);
-        
+
         // Generate JWT token
         String token = userService.generateToken(createdUser);
-        
+
         // Create response with user and token
         Map<String, Object> response = new HashMap<>();
         response.put("user", createdUser);
         response.put("token", token);
-        
+
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
@@ -142,6 +169,7 @@ public class UserController {
     public ResponseEntity<User> getCurrentUser(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         User user = userService.getUserFromToken(token);
+       
 
         if (user != null) {
             return new ResponseEntity<>(user, HttpStatus.OK);

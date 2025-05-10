@@ -10,10 +10,12 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.ArrayList;
 
 @Service
 public class PlantProgressServiceImpl implements PlantProgressService {
 
+    //These are injected via constructor:
     private final PlantProgressRepository plantProgressRepository;
     private final PlantingPlanRepository plantingPlanRepository;
     private final UserService userService;
@@ -50,7 +52,30 @@ public class PlantProgressServiceImpl implements PlantProgressService {
 
     @Override
     public Optional<PlantProgress> getProgressById(String id) {
-        return plantProgressRepository.findById(id);
+        System.out.println("Fetching progress by ID: " + id);
+        
+        Optional<PlantProgress> progress = plantProgressRepository.findById(id);
+        
+        // Debug the content
+        if (progress.isPresent()) {
+            PlantProgress p = progress.get();
+            System.out.println("Found progress with ID: " + p.getId());
+            
+            // Ensure completedMilestones is never null
+            if (p.getCompletedMilestones() == null) {
+                p.setCompletedMilestones(new ArrayList<>());
+            }
+            
+            // Log the milestones for debugging
+            System.out.println("Completed milestones count: " + p.getCompletedMilestones().size());
+            for (PlantProgress.CompletedMilestone m : p.getCompletedMilestones()) {
+                System.out.println("Milestone: " + m.getMilestoneId() + " - Notes: " + m.getNotes());
+            }
+        } else {
+            System.out.println("No progress found with ID: " + id);
+        }
+        
+        return progress;
     }
 
     @Override
@@ -75,19 +100,22 @@ public class PlantProgressServiceImpl implements PlantProgressService {
 
     @Override
     public PlantProgress updateProgress(PlantProgress progress) {
-        if (!plantProgressRepository.existsById(progress.getId())) {
-            throw new RuntimeException("Plant progress not found with ID: " + progress.getId());
+        System.out.println("Updating progress with ID: " + progress.getId());
+        
+        // Make sure completedMilestones is not null
+        if (progress.getCompletedMilestones() == null) {
+            progress.setCompletedMilestones(new ArrayList<>());
         }
         
+        // Ensure lastUpdatedAt is set
         progress.setLastUpdatedAt(LocalDateTime.now());
         
-        // Recalculate progress percentage
-        Optional<PlantingPlan> plantingPlanOpt = plantingPlanRepository.findById(progress.getPlantingPlanId());
-        if (plantingPlanOpt.isPresent()) {
-            updateProgressPercentageInternal(progress, plantingPlanOpt.get());
-        }
+        System.out.println("Milestones before save: " + progress.getCompletedMilestones());
+        PlantProgress savedProgress = plantProgressRepository.save(progress);
+        System.out.println("Milestones after save: " + savedProgress.getCompletedMilestones());
         
-        return plantProgressRepository.save(progress);
+        // Force a refresh to ensure we have the latest data
+        return plantProgressRepository.findById(progress.getId()).orElse(savedProgress);
     }
 
     @Override
@@ -106,26 +134,25 @@ public class PlantProgressServiceImpl implements PlantProgressService {
                 completedMilestone.setCompletedAt(LocalDateTime.now());
             }
             
+            // Make sure completedMilestones is not null
+            if (progress.getCompletedMilestones() == null) {
+                progress.setCompletedMilestones(new ArrayList<>());
+            }
+            
             // Check if milestone has already been completed
             boolean alreadyCompleted = progress.getCompletedMilestones().stream()
                     .anyMatch(cm -> cm.getMilestoneId().equals(completedMilestone.getMilestoneId()));
             
             if (!alreadyCompleted) {
+                System.out.println("Adding milestone: " + completedMilestone.getMilestoneId());
                 progress.getCompletedMilestones().add(completedMilestone);
                 progress.setLastUpdatedAt(LocalDateTime.now());
                 
-                // Recalculate progress percentage
-                Optional<PlantingPlan> plantingPlanOpt = plantingPlanRepository.findById(progress.getPlantingPlanId());
-                if (plantingPlanOpt.isPresent()) {
-                    PlantingPlan plantingPlan = plantingPlanOpt.get();
-                    
-                    updateProgressPercentageInternal(progress, plantingPlan);
-                    
-                    // Check for completion and award badges if needed
-                    checkAndAwardBadges(progress, plantingPlan);
-                }
+                // Save with explicit call to updateProgress
+                updateProgress(progress);
                 
-                plantProgressRepository.save(progress);
+                // Recalculate progress percentage
+                updateProgressPercentage(progressId);
             }
         } else {
             throw new RuntimeException("Plant progress not found with ID: " + progressId);
@@ -166,9 +193,6 @@ public class PlantProgressServiceImpl implements PlantProgressService {
             // Add badge if not already present
             if (!progress.getAwardedBadges().contains(badge)) {
                 progress.getAwardedBadges().add(badge);
-                
-                // Also add badge to user profile
-                userService.addBadge(progress.getUserId(), badge);
                 
                 progress.setLastUpdatedAt(LocalDateTime.now());
                 plantProgressRepository.save(progress);
@@ -211,6 +235,10 @@ public class PlantProgressServiceImpl implements PlantProgressService {
     
     // Helper method to check completion and award badges
     private void checkAndAwardBadges(PlantProgress progress, PlantingPlan plantingPlan) {
+        if (progress.getAwardedBadges() == null) {
+            progress.setAwardedBadges(new ArrayList<>());
+        }
+        
         // Award badge for 100% completion
         if (progress.getProgressPercentage() >= 100 && 
                 !progress.getAwardedBadges().contains("COMPLETION_MASTER")) {
@@ -225,6 +253,7 @@ public class PlantProgressServiceImpl implements PlantProgressService {
         
         // If the plant was coffee, award coffee specific badge on completion
         if (progress.getProgressPercentage() >= 100 && 
+                plantingPlan.getTags() != null && 
                 plantingPlan.getTags().contains("coffee") && 
                 !progress.getAwardedBadges().contains("COFFEE_GROWER")) {
             awardBadge(progress.getId(), "COFFEE_GROWER");
