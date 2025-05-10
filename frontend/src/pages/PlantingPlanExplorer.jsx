@@ -6,6 +6,77 @@ import PlantingPlanService from '../services/plantingPlanService';
 import PlantProgressService from '../services/plantProgressService';
 import { useAuth } from '../utils/AuthContext';
 
+const heroBgImage = 'https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80';
+
+const categoryImages = {
+  vegetables: 'https://images.unsplash.com/photo-1566385101042-1a0aa0c1268c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  fruits: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  flowers: 'https://images.unsplash.com/photo-1468327768560-75b778cbb551?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  herbs: 'https://images.unsplash.com/photo-1515586000433-45406d8e6662?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  default: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80'
+};
+
+// Add at the top of your file
+const plantTypeImages = {
+  // Vegetables
+  'Tomato': 'https://images.unsplash.com/photo-1582284540020-8acbe03f4924?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Carrot': 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Lettuce': 'https://images.unsplash.com/photo-1556801712-76c8eb07bbc9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Cucumber': 'https://images.unsplash.com/photo-1604977042946-1eecc30f269e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  
+  // Fruits
+  'Strawberry': 'https://images.unsplash.com/photo-1518635017498-87f514b751ba?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Watermelon': 'https://images.unsplash.com/photo-1563114773-84221bd62daa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Grape': 'https://images.unsplash.com/photo-1596363505729-4190a9506133?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  
+  // Flowers
+  'Rose': 'https://images.unsplash.com/photo-1562690868-60bbe7293e94?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Sunflower': 'https://images.unsplash.com/photo-1597848212624-a19eb35e2651?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Tulip': 'https://images.unsplash.com/photo-1588905857760-461c84562539?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80'
+};
+
+// At the top of your file
+const noPlansImage = 'https://images.unsplash.com/photo-1636222287396-e992a66d4d6d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80'; 
+
+// Helper function to get an appropriate image based on plan tags
+const getDefaultImage = (plan) => {
+  // First check if the title contains a specific plant type
+  const title = plan.title ? plan.title.toLowerCase() : '';
+  
+  for (const [plantType, imageUrl] of Object.entries(plantTypeImages)) {
+    if (title.includes(plantType.toLowerCase())) {
+      return imageUrl;
+    }
+  }
+  
+  // Then check tags as before
+  if (!plan.tags || plan.tags.length === 0) return categoryImages.default;
+  
+  const lowerTags = plan.tags.map(tag => tag.toLowerCase());
+  
+  // Check for specific plant types in tags
+  for (const [plantType, imageUrl] of Object.entries(plantTypeImages)) {
+    if (lowerTags.includes(plantType.toLowerCase())) {
+      return imageUrl;
+    }
+  }
+  
+  // Check for general categories
+  if (lowerTags.some(tag => tag === 'vegetables' || tag === 'vegetable')) 
+    return categoryImages.vegetables;
+  
+  if (lowerTags.some(tag => tag === 'fruits' || tag === 'fruit')) 
+    return categoryImages.fruits;
+  
+  if (lowerTags.some(tag => tag === 'flowers' || tag === 'flower' || tag === 'ornamental')) 
+    return categoryImages.flowers;
+  
+  if (lowerTags.some(tag => tag === 'herbs' || tag === 'herb')) 
+    return categoryImages.herbs;
+  
+  return categoryImages.default;
+};
+
 // Animation variants
 const containerVariant = {
   hidden: { opacity: 0 },
@@ -180,20 +251,14 @@ function PlantingPlanExplorer() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="relative mb-10 overflow-hidden rounded-2xl bg-gradient-to-r from-green-800 via-green-600 to-green-500"
+        className="relative mb-10 overflow-hidden rounded-2xl"
+        style={{
+          backgroundImage: `url(${heroBgImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
       >
-        <div className="absolute inset-0 opacity-10 mix-blend-overlay">
-          <svg className="w-full h-full" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-            <path d="M14,16.6L10.3,15L16.6,10.3L15,16.6M16.6,59.7L15,66L10.3,65L14,59.7M59.7,14L65,10.3L66,15L59.7,16.6M59.7,66L66,59.7L65,65L59.7,66M30.1,39.9L37,33L33,36.9M39.9,30.1L33,37L36.9,33M30.1,40.1L37,47L33,43.1M40.1,49.9L47,43L43.1,47M49.9,39.9L43,33L47,36.9M39.9,49.9L33,43L36.9,47M30.1,40.1L23,47L27,43.1M40.1,30.1L33,23L36.9,27" fill="rgba(255,255,255,0.4)" fillRule="evenodd" />
-          </svg>
-        </div>
-        <motion.div 
-          className="absolute -bottom-10 -right-10" 
-          animate={{ rotate: [0, 15, 0], scale: [1, 1.1, 1] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <FaLeaf className="text-white opacity-20" size={200} />
-        </motion.div>
+        <div className="absolute inset-0 bg-gradient-to-br from-green-800/80 via-green-600/80 to-green-500/80 backdrop-blur-sm"></div>
         
         <div className="relative z-10 p-8 sm:p-10">
           <motion.div
@@ -417,21 +482,11 @@ function PlantingPlanExplorer() {
                       className="h-full w-full object-cover transition-transform duration-700 hover:scale-110"
                     />
                   ) : (
-                    <div className="h-full w-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
-                      <motion.div
-                        animate={{ 
-                          y: [0, -10, 0],
-                          rotate: [0, 5, 0, -5, 0]
-                        }}
-                        transition={{ 
-                          duration: 5,
-                          repeat: Infinity,
-                          ease: "easeInOut"
-                        }}
-                      >
-                        <FaSeedling className="text-6xl text-white opacity-70" />
-                      </motion.div>
-                    </div>
+                    <img 
+                      src={getDefaultImage(plan)} 
+                      alt={plan.title} 
+                      className="h-full w-full object-cover transition-transform duration-700 hover:scale-110"
+                    />
                   )}
                   {progress && progress.progressPercentage === 100 && (
                     <div className="absolute top-3 right-3 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
@@ -564,18 +619,22 @@ function PlantingPlanExplorer() {
           >
             <div className="bg-green-50 rounded-xl p-10 max-w-xl mx-auto shadow-sm border border-green-100">
               <motion.div
+                className="mx-auto w-40 h-40 mb-4 rounded-full overflow-hidden"
                 animate={{ 
                   rotate: [0, 10, -10, 0],
-                  scale: [1, 1.1, 1]
+                  scale: [1, 1.05, 0.95, 1]
                 }}
                 transition={{ 
-                  duration: 5,
+                  duration: 8,
                   repeat: Infinity,
                   ease: "easeInOut"
                 }}
-                className="mx-auto w-16 h-16 mb-4 text-green-300"
               >
-                <FaSeedling size={64} />
+                <img 
+                  src={noPlansImage} 
+                  alt="No plans found" 
+                  className="w-full h-full object-cover"
+                />
               </motion.div>
               <h3 className="text-xl font-medium text-green-800 mb-2">No planting plans found</h3>
               <p className="text-green-700 mb-6">Try adjusting your search criteria or filters</p>
