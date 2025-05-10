@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "../utils/AuthContext";
 import {
   FaSeedling,
@@ -147,81 +148,98 @@ function PlantProgressDetailPage() {
       (milestone) => !completedIds.has(milestone.id || milestone._id)
     );
   };
-const handleCompleteMilestone = async (e) => {
-  e.preventDefault();
-  if (!selectedMilestoneId) {
-    alert("Please select a milestone to complete");
-    return;
-  }
-
-  try {
-    setLoadingAction(true);
-    const now = new Date();
-    const formattedDate = now.toISOString().split(".")[0];
-
-    const milestone = {
-      milestoneId: selectedMilestoneId,
-      notes: milestoneNote,
-      completedAt: formattedDate,
-      mediaUrls: [],
-    };
-
-    const response = await PlantProgressService.completeMilestone(progressId, milestone);
-    let updatedProgress = response?.data;
-
-    if (updatedProgress) {
-      // Award badge if 100% complete and not already awarded
-      if (
-        Math.round(updatedProgress.progressPercentage) === 100 &&
-        !updatedProgress.awardedBadges?.includes("Growth Master")
-      ) {
-        updatedProgress = {
-          ...updatedProgress,
-          awardedBadges: [...(updatedProgress.awardedBadges || []), "Growth Master"],
-        };
-
-        await PlantProgressService.updateProgress(progressId, updatedProgress);
-      }
-
-      setProgress(updatedProgress);
-    } else {
-      // Fallback: fetch the latest progress data
-      const updatedProgressResponse = await PlantProgressService.getProgressDetail(progressId);
-      let completedMilestones = [];
-
-      if (updatedProgressResponse.data.completedMilestones) {
-        if (Array.isArray(updatedProgressResponse.data.completedMilestones)) {
-          completedMilestones = updatedProgressResponse.data.completedMilestones;
-        } else {
-          try {
-            completedMilestones = Object.values(updatedProgressResponse.data.completedMilestones);
-          } catch (e) {
-            console.error("Failed to convert completedMilestones", e);
-          }
-        }
-      }
-
-      const fallbackProgress = {
-        ...updatedProgressResponse.data,
-        completedMilestones: completedMilestones.filter((m) => m && m.milestoneId),
-      };
-
-      setProgress(fallbackProgress);
+  const handleCompleteMilestone = async (e) => {
+    e.preventDefault();
+    if (!selectedMilestoneId) {
+      alert("Please select a milestone to complete");
+      return;
     }
 
-    // Clear form
-    setSelectedMilestoneId("");
-    setMilestoneNote("");
-    setPhotoFiles([]);
-    setLoadingAction(false);
-  } catch (err) {
-    console.error("Error completing milestone:", err);
-    console.error("Error details:", err.response?.data || "No additional error details");
-    setLoadingAction(false);
-    alert("Failed to complete milestone. Please try again.");
-  }
-};
+    try {
+      setLoadingAction(true);
+      const now = new Date();
+      const formattedDate = now.toISOString().split(".")[0];
 
+      const milestone = {
+        milestoneId: selectedMilestoneId,
+        notes: milestoneNote,
+        completedAt: formattedDate,
+        mediaUrls: [],
+      };
+
+      const response = await PlantProgressService.completeMilestone(
+        progressId,
+        milestone
+      );
+      let updatedProgress = response?.data;
+
+      if (updatedProgress) {
+        // Award badge if 100% complete and not already awarded
+        if (
+          Math.round(updatedProgress.progressPercentage) === 100 &&
+          !updatedProgress.awardedBadges?.includes("Growth Master")
+        ) {
+          updatedProgress = {
+            ...updatedProgress,
+            awardedBadges: [
+              ...(updatedProgress.awardedBadges || []),
+              "Growth Master",
+            ],
+          };
+
+          await PlantProgressService.updateProgress(
+            progressId,
+            updatedProgress
+          );
+        }
+
+        setProgress(updatedProgress);
+      } else {
+        // Fallback: fetch the latest progress data
+        const updatedProgressResponse =
+          await PlantProgressService.getProgressDetail(progressId);
+        let completedMilestones = [];
+
+        if (updatedProgressResponse.data.completedMilestones) {
+          if (Array.isArray(updatedProgressResponse.data.completedMilestones)) {
+            completedMilestones =
+              updatedProgressResponse.data.completedMilestones;
+          } else {
+            try {
+              completedMilestones = Object.values(
+                updatedProgressResponse.data.completedMilestones
+              );
+            } catch (e) {
+              console.error("Failed to convert completedMilestones", e);
+            }
+          }
+        }
+
+        const fallbackProgress = {
+          ...updatedProgressResponse.data,
+          completedMilestones: completedMilestones.filter(
+            (m) => m && m.milestoneId
+          ),
+        };
+
+        setProgress(fallbackProgress);
+      }
+
+      // Clear form
+      setSelectedMilestoneId("");
+      setMilestoneNote("");
+      setPhotoFiles([]);
+      setLoadingAction(false);
+    } catch (err) {
+      console.error("Error completing milestone:", err);
+      console.error(
+        "Error details:",
+        err.response?.data || "No additional error details"
+      );
+      setLoadingAction(false);
+      alert("Failed to complete milestone. Please try again.");
+    }
+  };
 
   // Handle liking progress
   const handleLikeProgress = async () => {
@@ -420,68 +438,224 @@ const handleCompleteMilestone = async (e) => {
           <div className="flex flex-col md:flex-row gap-6 mb-8">
             {/* Left column */}
             <div className="flex-1">
-              <div className="mb-6">
+              <div className="mb-6 relative">
                 <h2 className="text-xl font-bold text-gray-900 mb-3 flex items-center">
                   <FaSeedling className="mr-2 text-green-600" /> Growth Progress
                 </h2>
 
-                <div className="mb-3 flex justify-between items-center text-sm">
-                  <span className="inline-flex items-center px-3 py-1 text-green-700 bg-green-100 font-semibold rounded-full shadow-sm">
-                    {Math.round(progress.progressPercentage)}% Complete
-                  </span>
-                  <span className="text-green-700">
-                    {progress.completedMilestones.length} of{" "}
-                    {plantingPlan.milestones.length} milestones
-                  </span>
+                <div className="mb-3 flex justify-between items-center text-sm z-10 relative">
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="relative"
+                  >
+                    <motion.span
+                      key={progress.progressPercentage}
+                      className="inline-flex items-center px-3 py-1 text-green-700 bg-green-100 font-semibold rounded-full shadow-sm"
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{
+                        scale: 1,
+                        opacity: 1,
+                        backgroundColor: progress.progressPercentage === 100 ? '#4ade80' : '#dcfce7',
+                        color: progress.progressPercentage === 100 ? '#ffffff' : '#15803d'
+                      }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 500,
+                        damping: 25
+                      }}
+                    >
+                      <motion.span
+                        key={progress.progressPercentage + "-text"}
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                      >
+                        {Math.round(progress.progressPercentage)}% Complete
+                      </motion.span>
+                    </motion.span>
+                    {progress.progressPercentage === 100 && (
+                      <motion.div
+                        className="absolute inset-0"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 1, 0] }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          repeatType: "reverse"
+                        }}
+                      >
+                        <div className="absolute inset-0 rounded-full bg-green-300 blur-sm" />
+                      </motion.div>
+                    )}
+                  </motion.div>
+                  <motion.span
+                    className="text-green-700"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    {progress.completedMilestones.length} of {plantingPlan.milestones.length} milestones
+                  </motion.span>
                 </div>
 
-                <div className="w-full h-4 bg-green-100 rounded-full shadow-inner overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-green-400 via-green-500 to-green-600 rounded-full transition-all duration-700 ease-in-out"
-                    style={{ width: `${progress.progressPercentage}%` }}
-                  ></div>
+                <div className="w-full h-4 bg-green-100 rounded-full shadow-inner overflow-hidden relative z-10">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-green-400 via-green-500 to-green-600 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ 
+                      width: `${progress.progressPercentage}%`,
+                      scale: progress.progressPercentage === 100 ? [1, 1.02, 1] : 1
+                    }}
+                    transition={{
+                      width: { type: "spring", stiffness: 100, damping: 20 },
+                      scale: { 
+                        duration: 1.5, 
+                        repeat: progress.progressPercentage === 100 ? Infinity : 0,
+                        ease: "easeInOut" 
+                      }
+                    }}
+                  >
+                    {progress.progressPercentage === 100 && (
+                      <motion.div
+                        className="absolute inset-0 bg-white opacity-20"
+                        animate={{
+                          x: ["0%", "100%"]
+                        }}
+                        transition={{
+                          duration: 1,
+                          repeat: Infinity,
+                          ease: "linear"
+                        }}
+                        style={{
+                          width: "50%",
+                          transform: "skewX(-20deg)"
+                        }}
+                      />
+                    )}
+                  </motion.div>
                 </div>
               </div>
 
               {/* Badges */}
               {progress.awardedBadges && progress.awardedBadges.length > 0 && (
-                <div className="mb-6">
-                  <h2 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
-                    <FaMedal className="mr-2 text-yellow-500" /> Gold Badge
-                  </h2>
-                  <div className="flex flex-wrap gap-2">
-                    {progress.awardedBadges.map((badge, index) => (
-                      <span
-                        key={index}
-                        className="bg-yellow-100 text-yellow-800 text-sm px-3 py-1 rounded-full"
-                      >
-                        {badge}
-                      </span>
-                    ))}
-                  </div>
+                <div className="mb-6 relative">
+                  {/* Sparkling stars */}
+                  {[...Array(5)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute"
+                      style={{
+                        top: Math.random() * 60 - 20,
+                        left: Math.random() * 200,
+                        fontSize: "14px",
+                      }}
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{
+                        opacity: [0, 1, 0],
+                        scale: [0, 1, 0],
+                        rotateZ: [0, 180, 360],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        delay: i * 0.4,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      ✨
+                    </motion.div>
+                  ))}
+                  <motion.div
+                    initial={{ scale: 1 }}
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  >
+                    <h2 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
+                      <FaMedal className="mr-2 text-yellow-500" /> Gold Badge
+                    </h2>
+                    <div className="flex flex-wrap gap-2">
+                      {progress.awardedBadges.map((badge, index) => (
+                        <motion.span
+                          key={index}
+                          className="bg-yellow-100 text-yellow-800 text-sm px-3 py-1 rounded-full"
+                          whileHover={{ scale: 1.05 }}
+                          transition={{ type: "spring", stiffness: 300 }}
+                        >
+                          {badge}
+                        </motion.span>
+                      ))}
+                    </div>
+                  </motion.div>
                 </div>
               )}
 
               {/* Likes */}
               <div className="mb-6">
                 <div className="flex items-center">
-                  <button
+                  <motion.button
                     onClick={handleLikeProgress}
-                    className="flex items-center gap-2 bg-white border border-red-300 hover:bg-red-50 text-red-600 px-4 py-2 rounded-lg transition-colors"
+                    className="flex items-center gap-2 bg-white border-2 border-red-300 text-red-600 px-6 py-3 rounded-lg"
+                    whileHover={{ 
+                      scale: 1.05,
+                      backgroundColor: "rgb(254 242 242)",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)"
+                    }}
+                    whileTap={{ scale: 0.95 }}
                     disabled={!isAuthenticated}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
                   >
-                    <FaHeart /> Like this progress
-                  </button>
-                  <span className="ml-2 text-gray-500">
+                    <motion.span
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ 
+                        duration: 1.5,
+                        repeat: Infinity,
+                        repeatType: "reverse"
+                      }}
+                    >
+                      <FaHeart className="text-xl" />
+                    </motion.span>
+                    Like this progress
+                  </motion.button>
+                  <motion.span 
+                    className="ml-3 text-gray-500 font-medium"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
                     {progress.likes} {progress.likes === 1 ? "like" : "likes"}
-                  </span>
+                  </motion.span>
                 </div>
               </div>
+
             </div>
 
             {/* Right column - Plant info */}
+            
             <div className="flex-1">
               <div className="bg-green-50 rounded-lg p-6">
+                {/* Falling leaves inside progress box */}
+          {Array.from({ length: 20 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute text-green-300 text-xl select-none"
+              initial={{ y: -50, x: Math.random() * 300, opacity: 0 }}
+              animate={{ y: 120, opacity: 1 }}
+              transition={{
+                duration: 10 + Math.random() * 2,
+                repeat: Infinity,
+                delay: i * 0.4,
+              }}
+            >
+              🍃
+            </motion.div>
+          ))}
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">
                   Plant Information
                 </h2>
@@ -530,6 +704,8 @@ const handleCompleteMilestone = async (e) => {
           </div>
 
           {/* Completed Milestones */}
+
+          
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
             Completed Milestones
           </h2>
@@ -687,44 +863,32 @@ const handleCompleteMilestone = async (e) => {
                   ></textarea>
                 </div>
 
-                <div className="mb-6">
-                  <label className="block text-gray-700 font-medium mb-2">
-                    Add Photos (optional)
-                  </label>
-                  <div className="flex items-center">
-                    <label className="cursor-pointer bg-white px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
-                      <FaCamera className="inline-block mr-2" />
-                      Select Images
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) =>
-                          setPhotoFiles(Array.from(e.target.files))
-                        }
-                      />
-                    </label>
-                    {photoFiles.length > 0 && (
-                      <span className="ml-3 text-sm text-gray-500">
-                        {photoFiles.length}{" "}
-                        {photoFiles.length === 1 ? "file" : "files"} selected
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Note: Image upload is not fully implemented in this version
-                  </p>
-                </div>
+
 
                 <div className="flex justify-end">
-                  <button
+                  <motion.button
                     type="submit"
-                    className="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+                    className="px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-medium rounded-lg flex items-center gap-2 shadow-md"
+                    whileHover={{ 
+                      scale: 1.02,
+                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                    }}
+                    whileTap={{ scale: 0.98 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 20
+                    }}
                     disabled={loadingAction}
                   >
                     {loadingAction ? (
-                      <span className="flex items-center">
+                      <motion.span 
+                        className="flex items-center"
+                        animate={{ opacity: [1, 0.5, 1] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      >
                         <svg
                           className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
                           xmlns="http://www.w3.org/2000/svg"
@@ -746,11 +910,14 @@ const handleCompleteMilestone = async (e) => {
                           ></path>
                         </svg>
                         Completing...
-                      </span>
+                      </motion.span>
                     ) : (
-                      "Complete Milestone"
+                      <>
+                        <FaClipboardCheck className="text-xl" />
+                        Complete Milestone
+                      </>
                     )}
-                  </button>
+                  </motion.button>
                 </div>
               </form>
             </div>
@@ -759,13 +926,31 @@ const handleCompleteMilestone = async (e) => {
           {/* Edit/Delete Progress Buttons (for owner only) */}
           {isOwner && (
             <div className="mt-8 border-t border-gray-200 pt-6 flex gap-4">
-              <button
+              <motion.button
                 type="button"
                 onClick={() => setShowModal(true)}
-                className="px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center"
+                className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-medium rounded-lg flex items-center gap-2 shadow-md"
+                whileHover={{ 
+                  scale: 1.02,
+                  boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                }}
+                whileTap={{ scale: 0.98 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 20
+                }}
               >
-                <FaTrash className="mr-2" /> Delete Progress
-              </button>
+                <motion.span
+                  animate={{ rotate: [0, -10, 10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <FaTrash className="text-xl" />
+                </motion.span>
+                Delete Progress
+              </motion.button>
             </div>
           )}
 
@@ -863,24 +1048,67 @@ const handleCompleteMilestone = async (e) => {
             </div>
 
             <div className="flex justify-end gap-4">
-              <button
+              <motion.button
                 type="button"
                 onClick={() => {
                   setShowModal(false);
                   setDeleteConfirmation("");
                 }}
-                className="px-6 py-2 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition-colors"
+                className="px-6 py-3 bg-gray-100 text-gray-800 font-medium rounded-lg flex items-center gap-2"
+                whileHover={{ 
+                  scale: 1.02,
+                  backgroundColor: "#f3f4f6"
+                }}
+                whileTap={{ scale: 0.98 }}
               >
                 Cancel
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 type="button"
                 onClick={handleDeleteProgress}
-                className="px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+                className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-medium rounded-lg flex items-center gap-2 shadow-md"
+                whileHover={{ 
+                  scale: 1.02,
+                  boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                }}
+                whileTap={{ scale: 0.98 }}
                 disabled={deleteConfirmation !== "DELETE" || loadingAction}
               >
-                {loadingAction ? "Deleting..." : "Delete Progress"}
-              </button>
+                {loadingAction ? (
+                  <motion.span 
+                    className="flex items-center"
+                    animate={{ opacity: [1, 0.5, 1] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  >
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Deleting...
+                  </motion.span>
+                ) : (
+                  <>
+                    <FaTrash />
+                    Delete Progress
+                  </>
+                )}
+              </motion.button>
             </div>
           </div>
         </div>
