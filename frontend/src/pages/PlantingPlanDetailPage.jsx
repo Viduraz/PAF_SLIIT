@@ -13,6 +13,8 @@ function PlantingPlanDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAllMilestones, setShowAllMilestones] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false); // State for tracking delete operation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // State for delete confirmation modal
 
   useEffect(() => {
     const fetchPlanDetails = async () => {
@@ -26,7 +28,7 @@ function PlantingPlanDetailPage() {
           try {
             const progressResponse = await PlantProgressService.getUserProgress(currentUser._id);
             const userProgress = progressResponse.data.find(
-              p => p.plantingPlan._id === planId
+              p => p.plantingPlan?._id === planId || p.plantingPlanId === planId
             );
             setProgress(userProgress || null);
           } catch (err) {
@@ -47,12 +49,39 @@ function PlantingPlanDetailPage() {
 
   const startProgress = async () => {
     try {
-      const response = await PlantProgressService.startProgress(planId);
+      console.log("Starting progress for plan:", planId, "with user:", currentUser._id);
+      const response = await PlantProgressService.startProgress(planId, currentUser._id);
       setProgress(response.data);
-      navigate(`/plant-progress/${response.data._id}`);
+      navigate(`/plant-progress/${response.data._id || response.data.id}`);
     } catch (err) {
       console.error("Failed to start tracking progress:", err);
       alert("Failed to start tracking this plan. Please try again.");
+    }
+  };
+
+  // New function: Handle plan deletion
+  const handleDeletePlan = async () => {
+    if (!isAuthenticated) {
+      alert("You need to be logged in to delete this plan");
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      console.log("Deleting planting plan with ID:", planId);
+      await PlantingPlanService.deletePlan(planId);
+      
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+      
+      // Navigate back to all plans
+      navigate("/planting-plans");
+      // Optional: Show success message
+      alert("Planting plan deleted successfully");
+    } catch (err) {
+      console.error("Failed to delete planting plan:", err);
+      setIsDeleting(false);
+      alert("Failed to delete the planting plan. Please try again.");
     }
   };
 
@@ -169,7 +198,7 @@ function PlantingPlanDetailPage() {
                 progress ? (
                   <div className="d-grid gap-2">
                     <Link 
-                      to={`/plant-progress/${progress._id}`} 
+                      to={`/plant-progress/${progress._id || progress.id}`} 
                       className="btn btn-primary btn-lg"
                     >
                       View My Progress
@@ -244,18 +273,77 @@ function PlantingPlanDetailPage() {
             </div>
           </div>
           
-          {isAuthenticated && currentUser.role === "admin" && (
+          {isAuthenticated && (
             <div className="d-grid gap-2">
               <Link to={`/planting-plans/${planId}/edit`} className="btn btn-outline-primary">
                 Edit Plan
               </Link>
-              <button className="btn btn-outline-danger">
-                Delete Plan
+              <button 
+                className="btn btn-outline-danger"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Plan"
+                )}
               </button>
             </div>
           )}
         </div>
       </div>
+
+      {/* Delete confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="modal d-block" tabIndex="-1" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Confirm Deletion</h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <p>Are you sure you want to delete <strong>{plan.title}</strong>?</p>
+                <p className="text-danger">This action cannot be undone and will remove all associated progress data.</p>
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-danger"
+                  onClick={handleDeletePlan}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete Plan"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

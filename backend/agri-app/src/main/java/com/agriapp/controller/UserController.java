@@ -169,6 +169,7 @@ public class UserController {
     public ResponseEntity<User> getCurrentUser(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         User user = userService.getUserFromToken(token);
+       
 
         if (user != null) {
             return new ResponseEntity<>(user, HttpStatus.OK);

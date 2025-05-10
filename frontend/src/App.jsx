@@ -49,6 +49,7 @@ function App() {
               <Route path="/planting-plans/:planId" element={<PlantingPlanDetail />} />
               <Route path="/planting-plans/:planId/edit" element={<PlantingPlanEditPage />} />
               <Route path="/plant-progress/:progressId" element={<PlantProgressDetailPage />} />
+              <Route path="/plant-progress/:progressId/edit" element={<PlantProgressDetailPage editMode={true} />} />
               <Route path="/posts" element={<PostsPage />} />
               <Route path="/posts/new" element={<CreatePostPage />} />
               <Route path="/posts/:postId" element={<PostDetailPage />} />

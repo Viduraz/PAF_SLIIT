@@ -3,14 +3,14 @@ import api from "./api";
 const PlantingPlanService = {
   // Get all planting plans
   getAllPlans: () => {
-    return api.get("/plans");  // Remove the /api/ prefix
+    return api.get("/plans");  // Correct path
   },
 
   // Get a specific planting plan by ID
   getPlanById: (planId) => {
-    return api.get(`/plans/${planId}`);
+    return api.get(`/plans/${planId}`); // Correct path
   },
-
+  
   // Create a new planting plan (admin only)
   createPlan: (planData) => {
     return api.post("/plans", planData);

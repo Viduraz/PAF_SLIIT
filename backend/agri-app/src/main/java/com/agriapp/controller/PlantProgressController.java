@@ -6,7 +6,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/progress")
@@ -21,14 +24,22 @@ public class PlantProgressController {
 
     @PostMapping
     public ResponseEntity<PlantProgress> createProgress(@RequestBody PlantProgress progress) {
-        return new ResponseEntity<>(plantProgressService.createProgress(progress), HttpStatus.CREATED);
+        try {
+            PlantProgress createdProgress = plantProgressService.createProgress(progress);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdProgress);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PlantProgress> getProgressById(@PathVariable String id) {
-        return plantProgressService.getProgressById(id)
-                .map(progress -> new ResponseEntity<>(progress, HttpStatus.OK))
-                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    public ResponseEntity<PlantProgress> getProgressById(@PathVariable("id") String id) {
+        Optional<PlantProgress> progress = plantProgressService.getProgressById(id);
+        if (progress.isPresent()) {
+            return ResponseEntity.ok(progress.get());
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
     }
 
     @GetMapping
@@ -65,10 +76,34 @@ public class PlantProgressController {
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
+    @PutMapping("/{id}/milestones")
+    public ResponseEntity<?> completeMilestone(@PathVariable String id, @RequestBody PlantProgress.CompletedMilestone milestone) {
+        try {
+            System.out.println("Received milestone: " + milestone.getMilestoneId() + ", Date: " + milestone.getCompletedAt());
+            
+            if (milestone.getCompletedAt() == null) {
+                milestone.setCompletedAt(LocalDateTime.now());
+            }
+            
+            // Use the service method to add milestone
+            plantProgressService.completeMilestone(id, milestone);
+            
+            // Return the updated progress
+            Optional<PlantProgress> updatedProgress = plantProgressService.getProgressById(id);
+            return updatedProgress.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(null));
+                
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PostMapping("/{id}/milestones")
-    public ResponseEntity<Void> completeMilestone(@PathVariable String id, @RequestBody PlantProgress.CompletedMilestone milestone) {
-        plantProgressService.completeMilestone(id, milestone);
-        return new ResponseEntity<>(HttpStatus.OK);
+    public ResponseEntity<?> addCompletedMilestone(@PathVariable String id, @RequestBody PlantProgress.CompletedMilestone milestone) {
+        return completeMilestone(id, milestone);
     }
 
     @PutMapping("/{id}/percentage")
