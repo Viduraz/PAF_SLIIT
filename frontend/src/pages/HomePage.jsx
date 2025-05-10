@@ -33,13 +33,14 @@ function HomePage() {
             <div className="space-y-4">
               <p className="text-white text-lg">Track your plants, share your progress, and learn from others.</p>
               <div className="flex flex-wrap gap-3">
-                <Link to="/plans" className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg shadow-md transform hover:-translate-y-1 transition-all duration-200 flex items-center">
+                <Link to="/planting-plans" className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg shadow-md transform hover:-translate-y-1 transition-all duration-200 flex items-center">
                   <FaSeedling className="mr-2" /> View Planting Plans
                 </Link>
                 <Link to="/posts" className="bg-white hover:bg-gray-100 text-green-700 px-6 py-3 rounded-lg shadow-md transform hover:-translate-y-1 transition-all duration-200 flex items-center">
                   <FaUsers className="mr-2" /> Browse Community Posts
                 </Link>
-                <Link to="/plant-progress/:progressId" className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-3 rounded-lg shadow-md transform hover:-translate-y-1 transition-all duration-200 flex items-center">
+                {/* Fixed link to show all planting plans instead of a specific progress ID */}
+                <Link to="/planting-plans" className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-3 rounded-lg shadow-md transform hover:-translate-y-1 transition-all duration-200 flex items-center">
                   <FaLeaf className="mr-2" /> Add Plant Progress
                 </Link>
               </div>
