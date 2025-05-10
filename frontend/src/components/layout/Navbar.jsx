@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../utils/AuthContext';
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FaLeaf } from 'react-icons/fa';
 
 function Navbar() {
   const { currentUser, logout } = useAuth();
@@ -118,6 +119,19 @@ function Navbar() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>Track Plant</span>
+                </Link>
+              </motion.div>
+
+              <motion.div 
+                whileHover={{ y: -2 }}
+                whileTap={{ y: 0 }}
+              >
+                <Link 
+                  className="text-white hover:bg-white/10 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center" 
+                  to="/crop-disease-detector"
+                >
+                  <FaLeaf className="mr-2" />
+                  Crop Disease Detector
                 </Link>
               </motion.div>
             </div>
