@@ -378,30 +378,27 @@ function PlantProgressDetailPage() {
             {/* Left column */}
             <div className="flex-1">
               <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center">
-                  <FaSeedling className="mr-2 text-green-600" /> Growth Progress
-                </h2>
-                <div className="relative pt-1">
-                  <div className="flex mb-2 items-center justify-between">
-                    <div>
-                      <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-green-600 bg-green-200">
-                        {Math.round(progress.progressPercentage)}% Complete
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs font-semibold inline-block text-green-600">
-                        {progress.completedMilestones.length} of {plantingPlan.milestones.length} milestones
-                      </span>
-                    </div>
-                  </div>
-                  <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-green-200">
-                    <div 
-                      style={{ width: `${progress.progressPercentage}%` }}
-                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500 transition-all duration-500"
-                    ></div>
-                  </div>
-                </div>
-              </div>
+  <h2 className="text-xl font-bold text-gray-900 mb-3 flex items-center">
+    <FaSeedling className="mr-2 text-green-600" /> Growth Progress
+  </h2>
+
+  <div className="mb-3 flex justify-between items-center text-sm">
+    <span className="inline-flex items-center px-3 py-1 text-green-700 bg-green-100 font-semibold rounded-full shadow-sm">
+      {Math.round(progress.progressPercentage)}% Complete
+    </span>
+    <span className="text-green-700">
+      {progress.completedMilestones.length} of {plantingPlan.milestones.length} milestones
+    </span>
+  </div>
+
+  <div className="w-full h-4 bg-green-100 rounded-full shadow-inner overflow-hidden">
+    <div
+      className="h-full bg-gradient-to-r from-green-400 via-green-500 to-green-600 rounded-full transition-all duration-700 ease-in-out"
+      style={{ width: `${progress.progressPercentage}%` }}
+    ></div>
+  </div>
+</div>
+
               
               {/* Badges */}
               {progress.awardedBadges && progress.awardedBadges.length > 0 && (
