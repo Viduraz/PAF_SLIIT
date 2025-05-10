@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import PostService from "../services/postService";
 import CommentService from "../services/commentService";
+import { Modal, Button, Form, Spinner } from "react-bootstrap";
 
 function PostsPage() {
   const navigate = useNavigate();
@@ -161,10 +162,14 @@ function PostsPage() {
         .split(",")
         .map(tag => tag.trim())
         .filter(tag => tag !== "");
-
+      
+      // Include image properties from the original post
       const postData = {
         ...editFormData,
-        tags: tagsArray
+        tags: tagsArray,
+        // Preserve image data
+        imageUrl: editingPost.imageUrl,
+        imagePublicId: editingPost.imagePublicId
       };
 
       console.log("editingPost:", editingPost);
@@ -192,6 +197,8 @@ function PostsPage() {
               author: post.author, // Preserve author information
               createdAt: post.createdAt, // Preserve creation date
               tags: tagsArray, // Use our formatted tags
+              imageUrl: post.imageUrl, // Preserve image URL
+              imagePublicId: post.imagePublicId // Preserve image ID
             };
             return updatedPost;
           }
@@ -632,9 +639,65 @@ function PostsPage() {
           </div>
         )}
 
-        {/* Add the Edit Post Modal */}
-        {renderEditModal()}
-      </div>
+      {/* Add the Edit Post Modal */}
+      <Modal show={showEditPopup} onHide={handleCloseEditPopup} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Edit Post</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleUpdatePost}>
+            <Form.Group className="mb-3">
+              <Form.Label>Title</Form.Label>
+              <Form.Control
+                type="text"
+                name="title"
+                value={editFormData.title}
+                onChange={handleEditFormChange}
+                required
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Content</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={4}
+                name="content"
+                value={editFormData.content}
+                onChange={handleEditFormChange}
+                required
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Tags (comma separated)</Form.Label>
+              <Form.Control
+                type="text"
+                name="tags"
+                value={editFormData.tags}
+                onChange={handleEditFormChange}
+                placeholder="technology, programming, react"
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseEditPopup} disabled={updatingPost}>
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleUpdatePost} 
+            disabled={updatingPost}
+          >
+            {updatingPost ? (
+              <>
+                <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                <span className="ms-2">Updating...</span>
+              </>
+            ) : 'Update Post'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </div>
     </div>
   );
 }
