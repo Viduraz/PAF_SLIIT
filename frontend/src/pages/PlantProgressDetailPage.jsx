@@ -680,16 +680,7 @@ function PlantProgressDetailPage() {
           {/* Edit/Delete Progress Buttons (for owner only) */}
           {isOwner && (
             <div className="mt-8 border-t border-gray-200 pt-6 flex gap-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setEditedNotes(progress.notes || "");
-                  setIsEditMode(true);
-                }}
-                className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-              >
-                <FaEdit className="mr-2" /> Edit Progress
-              </button>
+              
               <button
                 type="button"
                 onClick={() => setShowModal(true)}
