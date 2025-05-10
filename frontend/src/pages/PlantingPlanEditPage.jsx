@@ -1,11 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaArrowLeft, FaSave, FaTimes, FaLeaf, FaTag, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaSeedling, FaArrowLeft, FaSave, FaTimes, FaLeaf, FaTag, FaEye, FaEyeSlash, FaImage, FaClock } from 'react-icons/fa';
 import PlantingPlanService from '../services/plantingPlanService';
 import { useAuth } from '../utils/AuthContext';
 
-// Animation variants
+// Import the plant image mappings from PlantingPlanDetail
+const categoryImages = {
+  vegetables: 'https://images.unsplash.com/photo-1566385101042-1a0aa0c1268c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  fruits: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  flowers: 'https://images.unsplash.com/photo-1468327768560-75b778cbb551?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  herbs: 'https://images.unsplash.com/photo-1515586000433-45406d8e6662?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  default: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80'
+};
+
+// Add plant type images
+const plantTypeImages = {
+  // Vegetables
+  'Tomato': 'https://images.unsplash.com/photo-1582284540020-8acbe03f4924?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Carrot': 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Lettuce': 'https://images.unsplash.com/photo-1556801712-76c8eb07bbc9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Cucumber': 'https://images.unsplash.com/photo-1604977042946-1eecc30f269e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  
+  // Fruits
+  'Strawberry': 'https://images.unsplash.com/photo-1518635017498-87f514b751ba?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Watermelon': 'https://images.unsplash.com/photo-1563114773-84221bd62daa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Grape': 'https://images.unsplash.com/photo-1596363505729-4190a9506133?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  
+  // Flowers
+  'Rose': 'https://images.unsplash.com/photo-1562690868-60bbe7293e94?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Sunflower': 'https://images.unsplash.com/photo-1597848212624-a19eb35e2651?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+  'Tulip': 'https://images.unsplash.com/photo-1588905857760-461c84562539?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80'
+};
+
+// Animation variants (keep existing ones)
 const containerVariant = {
   hidden: { opacity: 0 },
   visible: {
@@ -30,7 +58,47 @@ const itemVariant = {
   }
 };
 
+// Helper function to get appropriate image based on plan tags and title
+const getDefaultImage = (plan) => {
+  // First check if the title contains a specific plant type
+  const title = plan?.title ? plan.title.toLowerCase() : '';
+  
+  for (const [plantType, imageUrl] of Object.entries(plantTypeImages)) {
+    if (title.includes(plantType.toLowerCase())) {
+      return imageUrl;
+    }
+  }
+  
+  // Then check tags
+  if (!plan?.tags || plan.tags.length === 0) return categoryImages.default;
+  
+  const lowerTags = plan.tags.map(tag => tag.toLowerCase());
+  
+  // Check for specific plant types in tags
+  for (const [plantType, imageUrl] of Object.entries(plantTypeImages)) {
+    if (lowerTags.includes(plantType.toLowerCase())) {
+      return imageUrl;
+    }
+  }
+  
+  // Check for general categories
+  if (lowerTags.some(tag => tag === 'vegetables' || tag === 'vegetable')) 
+    return categoryImages.vegetables;
+  
+  if (lowerTags.some(tag => tag === 'fruits' || tag === 'fruit')) 
+    return categoryImages.fruits;
+  
+  if (lowerTags.some(tag => tag === 'flowers' || tag === 'flower' || tag === 'ornamental')) 
+    return categoryImages.flowers;
+  
+  if (lowerTags.some(tag => tag === 'herbs' || tag === 'herb')) 
+    return categoryImages.herbs;
+  
+  return categoryImages.default;
+};
+
 function PlantingPlanEditPage() {
+  // ... existing state variables
   const { planId } = useParams();
   const navigate = useNavigate();
   const { currentUser, isAuthenticated } = useAuth();
@@ -45,6 +113,13 @@ function PlantingPlanEditPage() {
   const [isPublic, setIsPublic] = useState(true);
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
+  
+  // Add new form fields for image and category
+  const [imageUrl, setImageUrl] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [categoryInput, setCategoryInput] = useState("");
+  const [duration, setDuration] = useState("30");
+  const [difficulty, setDifficulty] = useState("Beginner");
 
   useEffect(() => {
     const fetchPlan = async () => {
@@ -60,6 +135,10 @@ function PlantingPlanEditPage() {
         setDescription(planData.description || "");
         setIsPublic(planData.isPublic !== false);
         setTags(planData.tags || []);
+        setImageUrl(planData.image || "");
+        setCategories(planData.categories || []);
+        setDuration(planData.duration || "30");
+        setDifficulty(planData.difficulty || "Beginner");
         
         setLoading(false);
       } catch (err) {
@@ -88,7 +167,11 @@ function PlantingPlanEditPage() {
         title,
         description,
         isPublic,
-        tags
+        tags,
+        image: imageUrl,
+        categories,
+        duration,
+        difficulty
       };
       
       await PlantingPlanService.updatePlan(planId, updatedPlan);
@@ -102,6 +185,7 @@ function PlantingPlanEditPage() {
     }
   };
 
+  // Keep existing handlers
   const handleAddTag = () => {
     if (tagInput && !tags.includes(tagInput)) {
       setTags([...tags, tagInput]);
@@ -111,6 +195,18 @@ function PlantingPlanEditPage() {
 
   const handleRemoveTag = (tagToRemove) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+  
+  // Add new handlers for categories
+  const handleAddCategory = () => {
+    if (categoryInput && !categories.includes(categoryInput)) {
+      setCategories([...categories, categoryInput]);
+      setCategoryInput("");
+    }
+  };
+
+  const handleRemoveCategory = (categoryToRemove) => {
+    setCategories(categories.filter(category => category !== categoryToRemove));
   };
 
   if (loading) {
@@ -200,9 +296,32 @@ function PlantingPlanEditPage() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-        <div className="bg-gradient-to-r from-green-600 to-green-500 p-5 text-white">
-          <h1 className="text-2xl font-bold">Edit Planting Plan</h1>
-          <p className="text-green-100 mt-1">Updating: {plan?.title}</p>
+        {/* Image preview header */}
+        <div className="h-48 md:h-64 w-full overflow-hidden relative">
+          <img 
+            src={imageUrl || getDefaultImage(plan)}
+            alt={title || "Planting Plan"}
+            className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+          <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+            <h1 className="text-3xl font-bold mb-2 drop-shadow-lg">{title || "Edit Planting Plan"}</h1>
+            <div className="flex flex-wrap gap-2">
+              {categories.map((category, index) => (
+                <span key={index} className="bg-white/20 backdrop-blur-sm text-white text-sm px-3 py-1 rounded-full">
+                  {category}
+                </span>
+              ))}
+            </div>
+          </div>
+          
+          {/* Decorative elements */}
+          <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <pattern id="leafPattern" patternUnits="userSpaceOnUse" width="20" height="20" patternTransform="rotate(45)">
+              <path d="M10,0 Q15,10 10,20 Q5,10 10,0" fill="rgba(255,255,255,0.5)" />
+            </pattern>
+            <rect width="100%" height="100%" fill="url(#leafPattern)" />
+          </svg>
         </div>
 
         <div className="p-6 md:p-8">
@@ -233,6 +352,102 @@ function PlantingPlanEditPage() {
                   rows="4"
                   required
                 ></textarea>
+              </motion.div>
+              
+              {/* Add image URL field */}
+              <motion.div variants={itemVariant}>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                  <FaImage className="mr-2 text-green-600" /> Image URL
+                </label>
+                <input
+                  type="text"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="Enter image URL (or leave empty for automatic image)"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                />
+                <p className="text-xs text-gray-500 mt-1">Leave empty to use automatic image based on tags and title</p>
+              </motion.div>
+              
+              {/* Add plant categories */}
+              <motion.div variants={itemVariant}>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                  <FaSeedling className="mr-2 text-green-600" /> Plant Categories
+                </label>
+                <div className="flex flex-wrap gap-2 mb-2 min-h-[40px]">
+                  {categories.map((category, index) => (
+                    <motion.span 
+                      key={index} 
+                      className="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full flex items-center"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <FaSeedling className="mr-1 text-blue-600" />
+                      {category}
+                      <motion.button 
+                        type="button"
+                        onClick={() => handleRemoveCategory(category)}
+                        className="ml-1 text-blue-800 hover:text-red-500 transition-colors rounded-full h-4 w-4 flex items-center justify-center"
+                        whileHover={{ scale: 1.2, backgroundColor: 'rgba(239, 68, 68, 0.2)' }}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        &times;
+                      </motion.button>
+                    </motion.span>
+                  ))}
+                </div>
+                <div className="flex">
+                  <input
+                    type="text"
+                    value={categoryInput}
+                    onChange={(e) => setCategoryInput(e.target.value)}
+                    placeholder="Add a category (e.g., Vegetables, Fruits)"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
+                  />
+                  <motion.button
+                    type="button"
+                    onClick={handleAddCategory}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 transition-colors flex items-center"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <FaSeedling className="mr-2" />
+                    Add
+                  </motion.button>
+                </div>
+              </motion.div>
+              
+              {/* Add growing duration */}
+              <motion.div variants={itemVariant} className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <FaClock className="mr-2 text-green-600" /> Duration (days)
+                  </label>
+                  <input
+                    type="number"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    min="1"
+                    max="365"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                  />
+                </div>
+                
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
+                  <select
+                    value={difficulty}
+                    onChange={(e) => setDifficulty(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                  >
+                    <option value="Beginner">Beginner</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                  </select>
+                </div>
               </motion.div>
               
               <motion.div variants={itemVariant}>
