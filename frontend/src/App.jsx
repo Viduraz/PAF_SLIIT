@@ -17,6 +17,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import PlantingForm from "./pages/PlantingForm";
 import ProfileEditPage from "./pages/ProfileEditPage";
 import PlantingPlanEditPage from "./pages/PlantingPlanEditPage";
+import WeatherPage from "./pages/WeatherPage";
 
 
 
@@ -55,6 +56,7 @@ function App() {
               <Route path="/posts/:postId" element={<PostDetailPage />} />
               <Route path="/plantingfoam" element={<PlantingForm />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />
+              <Route path="/weather" element={<WeatherPage />} />
             </Routes>
           </main>
           <Footer />
