@@ -15,6 +15,7 @@ import java.util.ArrayList;
 @Service
 public class PlantProgressServiceImpl implements PlantProgressService {
 
+    //These are injected via constructor:
     private final PlantProgressRepository plantProgressRepository;
     private final PlantingPlanRepository plantingPlanRepository;
     private final UserService userService;
