@@ -56,10 +56,46 @@ function PlantProgressDetailPage() {
         
         const progressResponse = await PlantProgressService.getProgressDetail(progressId);
         console.log("Progress data received:", progressResponse.data);
-        setProgress(progressResponse.data);
+        
+        // ENHANCED SOLUTION: Handle completedMilestones more robustly
+        let completedMilestones = [];
+        
+        if (progressResponse.data.completedMilestones) {
+          // First check if it's already an array
+          if (Array.isArray(progressResponse.data.completedMilestones)) {
+            completedMilestones = progressResponse.data.completedMilestones;
+          } 
+          // Check if it's an empty array represented as an object
+          else if (typeof progressResponse.data.completedMilestones === 'object' && 
+                  Object.keys(progressResponse.data.completedMilestones).length === 0) {
+            completedMilestones = [];
+          }
+          // Try to convert from object format (MongoDB sometimes returns objects instead of arrays)
+          else if (typeof progressResponse.data.completedMilestones === 'object') {
+            try {
+              // For object with numeric keys
+              completedMilestones = Object.values(progressResponse.data.completedMilestones);
+              console.log("Converted completedMilestones from object:", completedMilestones);
+            } catch (e) {
+              console.error("Failed to convert completedMilestones", e);
+            }
+          }
+        }
+        
+        // Filter out any null or undefined values that might have crept in
+        completedMilestones = completedMilestones.filter(m => m && m.milestoneId);
+        
+        console.log("Final processed completedMilestones:", completedMilestones);
+        
+        const progressData = {
+          ...progressResponse.data,
+          completedMilestones: completedMilestones
+        };
+        
+        setProgress(progressData);
         
         // Fetch planting plan details
-        const planResponse = await PlantingPlanService.getPlanById(progressResponse.data.plantingPlanId);
+        const planResponse = await PlantingPlanService.getPlanById(progressData.plantingPlanId);
         console.log("Plan data received:", planResponse.data);
         setPlantingPlan(planResponse.data);
         
@@ -102,10 +138,8 @@ function PlantProgressDetailPage() {
       setLoadingAction(true);
       console.log("Completing milestone:", selectedMilestoneId, "with note:", milestoneNote);
       
-      // Format date properly for Java LocalDateTime - IMPORTANT!
-      // Java expects format: yyyy-MM-ddTHH:mm:ss
+      // Format date properly for Java LocalDateTime
       const now = new Date();
-      // Format without timezone information and milliseconds
       const formattedDate = now.toISOString().split('.')[0]; 
       
       const milestone = {
@@ -117,12 +151,39 @@ function PlantProgressDetailPage() {
       
       console.log("Sending milestone data:", milestone);
       
+      // Send request to complete the milestone
       const response = await PlantProgressService.completeMilestone(progressId, milestone);
       console.log("Milestone completion response:", response);
       
-      // Refresh data
-      const updatedProgressResponse = await PlantProgressService.getProgressDetail(progressId);
-      setProgress(updatedProgressResponse.data);
+      // Use the data from the response directly
+      if (response && response.data) {
+        setProgress(response.data);
+      } else {
+        // If response doesn't have the data we need, fetch fresh data
+        const updatedProgressResponse = await PlantProgressService.getProgressDetail(progressId);
+        
+        // Process completedMilestones the same way as in useEffect
+        let completedMilestones = [];
+        if (updatedProgressResponse.data.completedMilestones) {
+          if (Array.isArray(updatedProgressResponse.data.completedMilestones)) {
+            completedMilestones = updatedProgressResponse.data.completedMilestones;
+          } else {
+            try {
+              completedMilestones = Object.values(updatedProgressResponse.data.completedMilestones);
+            } catch (e) {
+              console.error("Failed to convert completedMilestones", e);
+            }
+          }
+        }
+        
+        // Create the updated progress object
+        const updatedProgress = {
+          ...updatedProgressResponse.data,
+          completedMilestones: completedMilestones.filter(m => m && m.milestoneId)
+        };
+        
+        setProgress(updatedProgress);
+      }
       
       // Clear form
       setSelectedMilestoneId("");

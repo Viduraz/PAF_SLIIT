@@ -85,8 +85,15 @@ public class PlantProgressController {
                 milestone.setCompletedAt(LocalDateTime.now());
             }
             
+            // Use the service method to add milestone
             plantProgressService.completeMilestone(id, milestone);
-            return new ResponseEntity<>(HttpStatus.OK);
+            
+            // Return the updated progress
+            Optional<PlantProgress> updatedProgress = plantProgressService.getProgressById(id);
+            return updatedProgress.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(null));
+                
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
