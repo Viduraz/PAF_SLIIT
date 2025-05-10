@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.ArrayList;
 
-@Document(collection = "plant_progress")
+@Document(collection = "plantProgress")
 public class PlantProgress {
     @Id
     private String id;
@@ -125,11 +125,14 @@ public class PlantProgress {
     }
     
     public List<CompletedMilestone> getCompletedMilestones() {
+        if (completedMilestones == null) {
+            completedMilestones = new ArrayList<>();
+        }
         return completedMilestones;
     }
     
     public void setCompletedMilestones(List<CompletedMilestone> completedMilestones) {
-        this.completedMilestones = completedMilestones;
+        this.completedMilestones = completedMilestones != null ? completedMilestones : new ArrayList<>();
     }
     
     public List<String> getAwardedBadges() {
