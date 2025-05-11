@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Date;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/users")
@@ -176,5 +177,45 @@ public class UserController {
         } else {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
+    }
+
+    @PostMapping("/login/google")
+    public ResponseEntity<Map<String, Object>> loginWithGoogle(@RequestBody Map<String, String> googleData) {
+        String email = googleData.get("email");
+        String displayName = googleData.get("displayName");
+        String uid = googleData.get("uid");
+
+        // Check if user exists
+        Optional<User> userOptional = userService.getUserByEmail(email);
+        User user;
+
+        if (userOptional.isEmpty()) {
+            // Create a new user if they don't exist
+            user = new User();
+            user.setEmail(email);
+            user.setUsername(displayName);
+            // Generate a secure random password
+            String randomPassword = UUID.randomUUID().toString();
+            user.setPassword(randomPassword);
+            user.setCreatedAt(new Date());
+            user.setRole("user");
+            
+            // You might want to store the Google UID as well
+            // Create a field in your User entity for this
+            
+            user = userService.createUser(user);
+        } else {
+            user = userOptional.get();
+        }
+
+        // Generate token
+        String token = userService.generateToken(user);
+
+        // Create response
+        Map<String, Object> response = new HashMap<>();
+        response.put("user", user);
+        response.put("token", token);
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }
