@@ -72,7 +72,7 @@ function Navbar() {
                 <FaSeedling className="text-xl text-green-600" />
               </div>
               <div className="ml-2">
-                <span className="font-bold text-xl">AgriApp</span>
+                <span className="font-bold text-xl">Agri Buddy</span>
                 <span className="text-xs text-green-600 block">Grow Together</span>
               </div>
             </Link>
