@@ -2,6 +2,8 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import UserService from '../services/userService';
 import axios from 'axios';
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { auth } from './firebase.config';
 
 const AuthContext = createContext(null);
 
@@ -92,6 +94,29 @@ export const AuthProvider = ({ children }) => {
     delete axios.defaults.headers.common['Authorization'];
   };
 
+  const loginWithGoogle = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Send the Google user info to your backend for validation/registration
+      const response = await UserService.loginWithGoogle({
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        uid: user.uid
+      });
+      
+      // Login with the response from your backend
+      login(response.data);
+      return response;
+    } catch (error) {
+      console.error("Google login error:", error);
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -100,6 +125,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         loading,
         updateCurrentUser,
+        loginWithGoogle,
         isAuthenticated: !!currentUser,
       }}
     >

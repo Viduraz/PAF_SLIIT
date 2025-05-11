@@ -19,6 +19,10 @@ const UserService = {
     }
   },
 
+  loginWithGoogle: (googleData) => {
+    return api.post('/users/login/google', googleData);
+  },
+
   getCurrentUser: async () => {
     const token = localStorage.getItem('token');
 
