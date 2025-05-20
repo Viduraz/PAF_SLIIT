@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../utils/AuthContext";
@@ -22,6 +22,10 @@ function PlantProgressDetailPage() {
   const { currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
+  // Flower raining animation configuration
+  const flowerEmojis = useMemo(() => ["🌸", "🌼", "🌺", "🌹", "🌷", "🌻", "💐", "🏵️"], []);
+  const flowerCount = 25; // Number of flowers to display
+  
   const [progress, setProgress] = useState(null);
   const [plantingPlan, setPlantingPlan] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -411,7 +415,44 @@ function PlantProgressDetailPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 relative overflow-hidden">
+      {/* Flower Rain Animation */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        {Array.from({ length: flowerCount }).map((_, index) => {
+          // Randomly select a flower emoji
+          const flower = flowerEmojis[Math.floor(Math.random() * flowerEmojis.length)];
+          // Random starting position
+          const startX = Math.random() * 100;
+          const duration = 10 + Math.random() * 15;
+          const delay = Math.random() * 20;
+          
+          return (
+            <motion.div
+              key={index}
+              className="absolute select-none"
+              initial={{ 
+                top: -50, 
+                left: `${startX}vw`,
+                opacity: 0.8
+              }}
+              animate={{ 
+                top: "110vh",
+                rotate: Math.random() > 0.5 ? 360 : -360
+              }}
+              transition={{ 
+                duration: duration,
+                delay: delay,
+                repeat: Infinity,
+                ease: "linear"
+              }}
+              style={{ fontSize: `${12 + Math.random() * 16}px` }}
+            >
+              {flower}
+            </motion.div>
+          );
+        })}
+      </div>
+      
       {/* Navigation */}
       <nav className="mb-6">
         <Link
